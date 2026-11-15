@@ -17,7 +17,8 @@ import {
   sentenceKnowledgeFromParsed,
 } from "../src/sentence.ts";
 
-const fixtureOut = new URL("./fixtures/thumb-pain/out/", import.meta.url).pathname;
+// Not named "out/": .gitignore ignores every out/ directory so a real extract can never be committed.
+const fixtureOut = new URL("./fixtures/thumb-pain/extract/", import.meta.url).pathname;
 const findingsPath = new URL("./fixtures/thumb-pain/findings.yaml", import.meta.url).pathname;
 
 function knowledge(partial: {

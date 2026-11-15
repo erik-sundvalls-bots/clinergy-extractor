@@ -1,0 +1,9 @@
+# Synthetic form index. Paths match the extractor: forms/<category>/<Topic>.yaml.
+ThumbPainSymptom:
+  display: thumb pain
+  category: symptom
+  file: forms/symptom/ThumbPainSymptom.yaml
+ThumbSwellingSymptom:
+  display: thumb swelling
+  category: symptom
+  file: forms/symptom/ThumbSwellingSymptom.yaml

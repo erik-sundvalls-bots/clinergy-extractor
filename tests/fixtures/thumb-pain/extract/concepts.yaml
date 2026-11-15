@@ -1,0 +1,105 @@
+# Synthetic concepts for the thumb-pain tests. Not extracted from Clinergy.
+# Displays are ordinary English words, the same ones the public walkthrough
+# shows on the buttons and in the summary box. Keys follow this repo's
+# synthetic naming (see tests/fixtures/dumps/entities.tsv: ElbowAcheSymptom,
+# display "elbow ache") and the real topic name ThumbPainSymptom.
+# Other keys (Thumb, DistalPhalanx, presence, ...) are ours. The real model
+# may spell them differently; the env-gated test uses whatever CLINERGY_OUT has.
+ThumbPainSymptom:
+  id: 1
+  display: thumb pain
+  category: Complete symptom
+  summaryType: AbsentPresent
+  supers:
+    - PainSymptom
+PainSymptom:
+  id: 2
+  display: pain
+  category: Incomplete symptom
+  summaryType: AbsentPresent
+  supers: []
+ThumbSwellingSymptom:
+  id: 3
+  display: thumb swelling
+  category: Complete symptom
+  summaryType: AbsentPresent
+  supers:
+    - SwellingSymptom
+SwellingSymptom:
+  id: 4
+  display: swelling
+  category: Incomplete symptom
+  summaryType: AbsentPresent
+  supers: []
+Thumb:
+  id: 5
+  display: thumb
+  category: null
+  summaryType: null
+  supers: []
+DistalPhalanx:
+  id: 6
+  display: distal phalanx
+  category: null
+  summaryType: null
+  supers: []
+presence:
+  id: 7
+  display: present
+  category: null
+  summaryType: null
+  supers: []
+absence:
+  id: 8
+  display: absent
+  category: null
+  summaryType: null
+  supers: []
+mild:
+  id: 9
+  display: mild
+  category: null
+  summaryType: null
+  supers: []
+moderate:
+  id: 10
+  display: moderate
+  category: null
+  summaryType: null
+  supers: []
+severe:
+  id: 11
+  display: severe
+  category: null
+  summaryType: null
+  supers: []
+gradual:
+  id: 12
+  display: gradual
+  category: null
+  summaryType: null
+  supers: []
+rapid:
+  id: 13
+  display: rapid
+  category: null
+  summaryType: null
+  supers: []
+sudden:
+  id: 14
+  display: sudden
+  category: null
+  summaryType: null
+  supers: []
+day:
+  id: 15
+  display: day
+  category: null
+  summaryType: null
+  supers: []
+week:
+  id: 16
+  display: week
+  category: null
+  summaryType: null
+  supers: []

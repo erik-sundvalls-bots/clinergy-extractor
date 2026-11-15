@@ -266,10 +266,12 @@ sub-location needs the prepositional form ("Pain in right thumb"). Missing lexic
 the display plus `-ly`) and `renderReport` lists them.
 
 The checked example is the public
-[thumb-pain walkthrough](https://pen-pad-revival.github.io/docs/clinergy-thumb-pain-demo/). `tests/fixtures/thumb-pain/`
-is synthetic rules and findings we wrote so that walkthrough's summary lines come back out. It is not a Clinergy
-extract: no model files, and the only Clinergy strings in it are concept keys. Which of those lines is public UI text,
-and which keys we invented, is noted at the top of the fixture. Real extracts stay out of the repo.
+[thumb-pain walkthrough](https://pen-pad-revival.github.io/docs/clinergy-thumb-pain-demo/).
+`tests/fixtures/thumb-pain/extract/` is laid out like an extractor `out/` directory: synthetic rules and findings we
+wrote so that walkthrough's summary lines come back out. It is not named `out/`, because `.gitignore` ignores every
+`out/` directory. It is not a Clinergy extract: no model files, and the only Clinergy strings in it are concept keys.
+Which of those lines is public UI text, and which keys we invented, is noted at the top of the fixture. Real extracts
+stay out of the repo.
 
 ## Tests
 
