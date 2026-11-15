@@ -1,0 +1,120 @@
+# Swedish language pack. Translations are ours, written for this repository.
+# They have not been reviewed by a native speaker. Erik's review is pending.
+# No Clinergy text: the keys are concept names, the words are our Swedish.
+id: sv
+subJoiner: av
+locationOrder: sub-lat-loc
+# An adverb is the neuter adjective (svår -> svårt) when no adverb is listed.
+adverbRule: suffix-t
+prepositions:
+  in: i
+  of: av
+  on: på
+definiteness:
+  topic: false
+  location: false
+  subLocation: false
+laterality:
+  left:
+    adjective: vänster
+    adjectiveForms:
+      en: vänster
+      ett: vänster
+      plural: vänstra
+      definite: vänstra
+  right:
+    adjective: höger
+    adjectiveForms:
+      en: höger
+      ett: höger
+      plural: högra
+      definite: högra
+entries:
+  ThumbPainSymptom:
+    noun: tumsmärta
+    gender: en
+    definite: tumsmärtan
+    plural: tumsmärtor
+  PainSymptom:
+    noun: smärta
+    gender: en
+    definite: smärtan
+    plural: smärtor
+    definitePlural: smärtorna
+  ThumbSwellingSymptom:
+    noun: tumsvullnad
+    gender: en
+    definite: tumsvullnaden
+    plural: tumsvullnader
+  SwellingSymptom:
+    noun: svullnad
+    gender: en
+    definite: svullnaden
+    plural: svullnader
+    definitePlural: svullnaderna
+  Thumb:
+    noun: tumme
+    gender: en
+    definite: tummen
+    plural: tummar
+    definitePlural: tummarna
+  DistalPhalanx:
+    noun: ytterfalang
+    gender: en
+    definite: ytterfalangen
+    plural: ytterfalanger
+  Onset:
+    noun: debut
+    gender: en
+    definite: debuten
+    plural: debuter
+  Severity:
+    noun: svårhetsgrad
+    gender: en
+    adjective: svår
+    adjectiveForms:
+      en: svår
+      ett: svårt
+      plural: svåra
+      definite: svåra
+  Duration:
+    noun: i
+  presence:
+    adjective: föreligger
+    indeclinable: true
+  gradual:
+    adjective: gradvis
+    indeclinable: true
+  moderate:
+    adjective: måttlig
+    adjectiveForms:
+      en: måttlig
+      ett: måttligt
+      plural: måttliga
+      definite: måttliga
+    adverb: måttligt
+  day:
+    noun: dag
+    gender: en
+    definite: dagen
+    plural: dagar
+  week:
+    noun: vecka
+    gender: en
+    definite: veckan
+    plural: veckor
+  # ett-word used by the agreement tests. "symtom" is a common Swedish noun.
+  Symptom:
+    noun: symtom
+    gender: ett
+    definite: symtomet
+    plural: symtom
+    definitePlural: symtomen
+  Skin:
+    noun: hud
+    gender: en
+    definite: huden
+  Stomach:
+    noun: magsäck
+    gender: en
+    definite: magsäcken

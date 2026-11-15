@@ -5,6 +5,7 @@
 import { assert, assertEquals, assertThrows } from "@std/assert";
 import { parse } from "@std/yaml";
 import { main as extractMain } from "../clinergy-extract.ts";
+import { languageFromPack, loadLanguagePack } from "../src/language.ts";
 import { main as sentenceMain } from "../src/sentence-cli.ts";
 import {
   type Finding,
@@ -422,14 +423,12 @@ Deno.test({
       assert(rows.length > 0, "expectations file is empty");
       for (const row of rows) {
         const rec = row as { expected?: string; lang?: string; finding?: unknown };
-        if (rec.lang && rec.lang !== "en") {
-          throw new Error(`this build renders English only; case asked for lang ${rec.lang}`);
-        }
         if (typeof rec.expected !== "string" || !rec.finding) {
           throw new Error("each expectations entry needs `expected` and `finding`");
         }
         const [finding] = findingsFromParsed(rec.finding);
-        assertEquals(render(finding, k), rec.expected);
+        const lang = rec.lang && rec.lang !== "en" ? languageFromPack(await loadLanguagePack(rec.lang)) : undefined;
+        assertEquals(render(finding, k, lang), rec.expected);
       }
     } finally {
       if (tmp) await Deno.remove(tmp, { recursive: true });

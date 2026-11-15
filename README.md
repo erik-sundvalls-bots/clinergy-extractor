@@ -305,7 +305,27 @@ CLINERGY_SENTENCE_EXPECTATIONS=/path/to/expectations.yaml \
     qualifiers: []
 ```
 
-Use the concept keys from that extract. `lang` other than `en` is rejected until the multilingual work is in.
+Use the concept keys from that extract. A case may set `lang: sv` (or a path to a pack). `en` and a missing `lang` use
+the extracted English lexicon, which is what a real extract needs. Swedish expectations for a real extract are a
+separate file:
+
+```sh
+CLINERGY_OUT=/path/to/out \
+CLINERGY_SENTENCE_EXPECTATIONS_SV=/path/to/expectations-sv.yaml \
+  deno test -A tests/language_test.ts
+```
+
+## Other languages
+
+`render(finding, knowledge, lang)` takes a language pack. `lang/en.yaml` and `lang/sv.yaml` are ours: English repeats
+the synthetic fixture's words, Swedish is our translation and has not had a native-speaker review. Rules (precedence,
+position, order) stay in the extractor YAML. The pack holds the lexicon, en/ett/plural/definite agreement, adverb
+formation (`-t`), prepositions (including a choice by location type) and location-slot order. A missing entry is
+reported by `renderReport` and the concept key is used.
+
+```sh
+deno task sentence out/ finding.yaml --lang sv
+```
 
 ## Credits and licence
 

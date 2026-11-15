@@ -113,8 +113,10 @@ export interface Language {
   negative(name: string): string;
   adverb(name: string): string;
   unit(name: string, n: number): string;
-  /** Gender and definiteness of a concept. English has none, so the default is indefinite common gender. */
+  /** Gender and number of a concept. English has none, so the default is indefinite common gender. */
   agreement?(name: string): Agreement;
+  /** Whether nouns in this slot are definite. English is indefinite. */
+  definiteSlot?(slot: "topic" | "location" | "subLocation"): boolean;
   /**
    * Order of the location slots inside the prepositional head.
    * "sub-lat-loc" is "distal phalanx of left thumb".
@@ -362,7 +364,7 @@ function phraseOf(
       index,
     }];
   }
-  const topicAgree = agreementFor(headName, lang);
+  const topicAgree = agreementFor(headName, lang, "topic");
   const descKind = descriptorKind(rule.descriptorForm);
   const descAgree = descKind === "noun" ? agreementFor(q.descriptor, lang) : topicAgree;
   const valueAgree = descKind === "noun" ? agreementFor(q.descriptor, lang) : topicAgree;
@@ -437,20 +439,21 @@ function baseConcept(topic: string, rest: string, knowledge: SentenceKnowledge):
 
 function headOf(finding: Finding, knowledge: SentenceKnowledge, lang: Language, missing: string[]): string {
   const headName = grammaticalHead(finding, knowledge);
-  const noun = lang.noun(headName, agreementFor(headName, lang));
+  const noun = lang.noun(headName, agreementFor(headName, lang, "topic"));
   if (!finding.location) return noun;
   const locDisplay = knowledge.concepts[finding.location]?.display ?? "";
   const topicDisplay = knowledge.concepts[finding.topic]?.display ?? "";
   const includes = locDisplay.length > 0 && topicDisplay.toLowerCase().startsWith(locDisplay.toLowerCase() + " ");
   const expanded = Boolean(finding.laterality || finding.subLocation || !includes);
   // Unexpanded pre-coordinated topic: "thumb pain", not "pain in thumb".
-  if (!expanded) return lang.noun(finding.topic, agreementFor(finding.topic, lang));
+  if (!expanded) return lang.noun(finding.topic, agreementFor(finding.topic, lang, "topic"));
   const prep = lang.preposition(locativePreposition(finding, knowledge, missing), finding.location);
   const sub = finding.subLocation
-    ? `${lang.noun(finding.subLocation, agreementFor(finding.subLocation, lang))} ${lang.subJoiner()}`
+    ? `${lang.noun(finding.subLocation, agreementFor(finding.subLocation, lang, "subLocation"))} ${lang.subJoiner()}`
     : "";
-  const lat = finding.laterality ? lang.laterality(finding.laterality, agreementFor(finding.location, lang)) : "";
-  const locWord = lang.noun(finding.location, agreementFor(finding.location, lang));
+  const locAgree = agreementFor(finding.location, lang, "location");
+  const lat = finding.laterality ? lang.laterality(finding.laterality, locAgree) : "";
+  const locWord = lang.noun(finding.location, locAgree);
   const slots = lang.locationOrder === "lat-loc-sub" ? [lat, locWord, sub] : [sub, lat, locWord];
   return joinWords([noun, prep, ...slots]);
 }
@@ -466,8 +469,14 @@ function locativePreposition(finding: Finding, knowledge: SentenceKnowledge, mis
   return link.preposition;
 }
 
-function agreementFor(name: string, lang: Language): Agreement {
-  return lang.agreement?.(name) ?? INDEFINITE;
+function agreementFor(
+  name: string,
+  lang: Language,
+  slot?: "topic" | "location" | "subLocation",
+): Agreement {
+  const base = lang.agreement?.(name) ?? INDEFINITE;
+  if (slot && lang.definiteSlot?.(slot)) return { ...base, definite: true };
+  return base;
 }
 
 // --- token vocabulary ------------------------------------------------------
