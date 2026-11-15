@@ -27,7 +27,6 @@ const CAMEL = /^[A-Z][a-z]+[A-Z]\w+$/;
 export function pascalStrings(bytes: Uint8Array): string[] {
   const s = latin1.decode(bytes);
   const out: string[] = [];
-  // deno-lint-ignore no-control-regex -- binary record markers
   for (const m of s.matchAll(/[A-Za-z][A-Za-z0-9 \-']*/g)) {
     if (m.index! > 0 && s.charCodeAt(m.index! - 1) === m[0].length) out.push(m[0]);
   }
@@ -56,6 +55,7 @@ export function descriptorWords(files: Uint8Array[]): Map<string, DescriptorWord
 export function valueAdverbs(e28: Uint8Array): Map<string, string> {
   const s = latin1.decode(e28);
   const out = new Map<string, string>();
+  // deno-lint-ignore no-control-regex -- binary record markers
   for (const m of s.matchAll(/\x01\x00\x00([\x03-\x14])([a-z]+ly)\x00/g)) {
     if (m[1].charCodeAt(0) !== m[2].length) continue;
     const end = m.index! + m[0].length;
