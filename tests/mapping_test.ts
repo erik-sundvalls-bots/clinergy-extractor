@@ -1,28 +1,22 @@
-// Tests for the OpenGALEN name matcher and the clinergy-to-opengalen CLI, on invented names only.
+// Tests for the OpenGALEN index, the lexical matcher and the clinergy-to-opengalen
+// preprocessor, on invented names only (tests/og_fixture.ts, tests/fixtures/).
 import { assert, assertEquals } from "@std/assert";
 import { parse } from "@std/yaml";
 import { Matcher, normKey, spell, tokens } from "../src/mapping.ts";
-import { loadOpenGalenNames, type OgNames, scanText } from "../src/opengalen.ts";
+import { loadOpenGalen, OgIndex, scanDump, scanOwl } from "../src/opengalen.ts";
 import { main as extract } from "../clinergy-extract.ts";
 import { main as mapCli } from "../clinergy-to-opengalen.ts";
 import { buildIs3, buildZip } from "./helpers.ts";
+import { DUMP, OWL, writeOgZip } from "./og_fixture.ts";
 
-const OWL = `Prefix(:=<http://www.opengalen.org/owl/opengalen.owl#>)
-Declaration(Class(<http://www.opengalen.org/owl/opengalen.owl#ElbowAcheSymptom>))
-Declaration(Class(<http://www.opengalen.org/owl/opengalen.owl#Ache>))
-Declaration(Class(<http://www.opengalen.org/owl/opengalen.owl#NAMEDElbow>))
-Declaration(Class(<http://www.opengalen.org/owl/opengalen.owl#Swelling>))
-Declaration(Class(<http://www.opengalen.org/owl/opengalen.owl#SeverityState>))
-Declaration(ObjectProperty(<http://www.opengalen.org/owl/opengalen.owl#hasSeverity>))
-Declaration(Class(<http://www.opengalen.org/owl/opengalen.owl#Oedema>))
-`;
-const DUMP = ";; test dump\n(implies Strain TopCategory)\n(equivalent ElbowStrainInjury ElbowStrain2)\n";
+// deno-lint-ignore no-explicit-any
+type Y = Record<string, any>;
 
-function names(): OgNames {
-  const n: OgNames = new Map();
-  scanText(OWL, "owl", n);
-  scanText(DUMP, "dump", n);
-  return n;
+function index(): OgIndex {
+  const ix = new OgIndex();
+  scanOwl(OWL, ix);
+  scanDump(DUMP, ix);
+  return ix;
 }
 
 Deno.test("tokens, spelling and normalised keys", () => {
@@ -34,53 +28,49 @@ Deno.test("tokens, spelling and normalised keys", () => {
   assertEquals(normKey("Edema"), normKey("Oedema"));
 });
 
-Deno.test("scanText reads OWL-F declarations and dump names", () => {
-  const n = names();
-  assertEquals(n.get("hasSeverity"), "ObjectProperty");
-  assertEquals(n.get("ElbowAcheSymptom"), "Class");
-  assert(n.has("Strain") && n.has("ElbowStrain2") && n.has("TopCategory"));
+Deno.test("index: kinds, hierarchy, definitions, sanctions, labels", () => {
+  const ix = index();
+  assertEquals(ix.kinds.get("hasSeverity"), "ObjectProperty");
+  assertEquals(ix.kinds.get("ElbowAche2"), "Class"); // dump-only name
+  assertEquals([...ix.parents.get("SlightSeverity")!], ["Severity"]);
+  assert(ix.children.get("Severity")!.has("StrongSeverity"));
+  assertEquals([...ix.parents.get("hasSeverity")!], ["Attribute"]); // SubObjectPropertyOf
+  assert(ix.equivalents.get("ElbowAcheSymptom")!.has("ElbowAche2"));
+  assert(
+    ix.axioms.get("SlightSeverity")![0].startsWith("EquivalentClasses(SlightSeverity ObjectIntersectionOf(Severity"),
+  );
+  assert(!ix.axioms.has("PainwhichhasLocationElbow")); // generated: axioms skipped
+  assertEquals(ix.sanctions.get("Pain")!.get("hasSeverity"), ["Severity"]);
+  assertEquals(ix.annotations.get("hasSeverity")!.get("label"), ["has severity"]);
+  assert(!ix.annotations.get("Pain")?.has("SANCTION-LEVEL"));
 });
 
 Deno.test("matcher: exact, normalised, candidate, unmapped", () => {
-  const m = new Matcher(names());
+  const m = new Matcher(index().kinds);
   const exact = m.match("ElbowAcheSymptom");
   assertEquals([exact.status, exact.opengalen, exact.needsReview], ["exact", "ElbowAcheSymptom", false]);
   const norm = m.match("Elbow");
-  assertEquals([norm.status, norm.opengalen, norm.candidates[0].name, norm.needsReview], [
-    "normalised",
-    null,
-    "NAMEDElbow",
-    true,
-  ]);
+  assertEquals([norm.status, norm.opengalen, norm.candidates[0].name], ["normalised", null, "NAMEDElbow"]);
   assertEquals(m.match("Edema").candidates[0].name, "Oedema");
-  const cand = m.match("AbsoluteSeverity");
-  assertEquals(cand.status, "candidate");
-  assertEquals(cand.opengalen, null); // never a mapping without review
-  assert(cand.candidates.some((c) => c.name === "hasSeverity"));
+  const cand = m.match("SeverityGrade");
+  assertEquals([cand.status, cand.opengalen], ["candidate", null]); // never a mapping
+  assert(cand.candidates.some((c) => c.name === "Severity"));
   assert(cand.candidates.every((c, i, a) => i === 0 || a[i - 1].score >= c.score));
   assertEquals(m.match("Zzyzx").status, "unmapped");
-  assertEquals(new Matcher(names(), { minScore: 0.99 }).match("AbsoluteSeverity").status, "unmapped");
+  assertEquals(new Matcher(index().kinds, { minScore: 0.99 }).match("SeverityGrade").status, "unmapped");
 });
 
-Deno.test("loadOpenGalenNames: zip input skips RDF copies", async () => {
-  const enc = new TextEncoder();
+Deno.test("loadOpenGalen: zip input uses OWL-F and the chosen dump only", async () => {
   const tmp = await Deno.makeTempDir();
-  await Deno.writeFile(
-    `${tmp}/og.zip`,
-    await buildZip({
-      "OpenGALEN8/OWL_Sources/OWL-F/a.owl": enc.encode(OWL),
-      "OpenGALEN8/OWL_Sources/RDF/a.owl": enc.encode("Declaration(Class(<x#OnlyInRdf>))"),
-      "OpenGALEN8/Hierarchy_Dumps/OpenGALEN8_WithoutPropertyChains_CRM+Diseases+SurgicalProcedures+DrugOntology.dump":
-        enc.encode(DUMP),
-    }, ["OpenGALEN8/OWL_Sources/OWL-F/a.owl"]),
-  );
-  const { names: n, files } = await loadOpenGalenNames(`${tmp}/og.zip`);
-  assertEquals(files.length, 2);
-  assert(n.has("Strain") && n.has("hasSeverity") && !n.has("OnlyInRdf"));
+  await writeOgZip(`${tmp}/og.zip`);
+  const ix = await loadOpenGalen(`${tmp}/og.zip`);
+  assertEquals(ix.files.length, 2);
+  assert(ix.has("ElbowAche2") && ix.has("hasSeverity"));
+  assert(!ix.has("OnlyInRdf") && !ix.has("OnlyInOtherDump"));
   await Deno.remove(tmp, { recursive: true });
 });
 
-Deno.test("cli: map a synthetic extraction and annotate forms", async () => {
+Deno.test("preprocessor: mappings, worklist, reviewed merge, verified-only annotations", async () => {
   const tmp = await Deno.makeTempDir();
   const fx = new URL("./fixtures/", import.meta.url);
   const parts = buildIs3([
@@ -89,24 +79,61 @@ Deno.test("cli: map a synthetic extraction and annotate forms", async () => {
   ]);
   await Deno.writeFile(`${tmp}/demo.zip`, await buildZip({ "_SETUP.1": parts[0] }));
   assertEquals(await extract([`${tmp}/demo.zip`, `${tmp}/out`, "--dumps", new URL("dumps", fx).pathname]), 0);
-  await Deno.writeTextFile(`${tmp}/og.owl`, OWL);
-  for (let run = 0; run < 2; run++) { // twice: annotation must replace, not duplicate
-    assertEquals(await mapCli([`${tmp}/out`, `${tmp}/og.owl`, `${tmp}/map`, "--annotate"]), 0);
-  }
-  const summary = parse(await Deno.readTextFile(`${tmp}/map/summary.yaml`)) as {
-    coverage: { all: Record<string, number> };
-  };
-  const all = summary.coverage.all;
-  assertEquals(all.total, all.exact + all.normalised + all.candidate + all.unmapped);
-  assert(all.exact >= 1);
-  const one = parse(await Deno.readTextFile(`${tmp}/map/names/E/ElbowAcheSymptom.yaml`)) as Record<string, unknown>;
-  assertEquals([one.status, one.opengalenIri], [
-    "exact",
-    "http://www.opengalen.org/owl/opengalen.owl#ElbowAcheSymptom",
+  await writeOgZip(`${tmp}/og.zip`);
+  const args = [`${tmp}/out`, `${tmp}/og.zip`, `${tmp}/map`];
+  assertEquals(await mapCli(args), 0);
+
+  const read = async (p: string) => parse(await Deno.readTextFile(`${tmp}/map/${p}`)) as Y;
+  let maps = await read("mappings.yaml");
+  assertEquals(maps.ElbowAcheSymptom.method, "exact");
+  assertEquals(maps.ElbowAcheSymptom.iri, "http://www.opengalen.org/owl/opengalen.owl#ElbowAcheSymptom");
+  assertEquals(maps.ElbowAcheSymptom.needsHumanReview, false);
+  assertEquals([maps.Elbow.opengalen, maps.Elbow.method, maps.Elbow.needsHumanReview], [
+    "NAMEDElbow",
+    "normalised",
+    true,
   ]);
+  assertEquals(maps.Severity.method, "exact");
+  assert(!("slight" in maps));
+
+  const values = await read("worklist/value.yaml");
+  const slight = values.slight;
+  assertEquals(slight.usedAsValueOf[0].feature, "Severity");
+  assertEquals(slight.usedAsValueOf[0].siblings, ["strong"]);
+  assert(slight.unverifiedHints.some((h: Y) => h.name === "SlightSadness")); // look-alike, not a mapping
+  assert(slight.unverifiedHints.some((h: Y) => h.name === "SlightSeverity"));
+
+  // a reviewer (person or agent) records decisions; unknown OpenGALEN names are rejected
+  await Deno.writeTextFile(
+    `${tmp}/reviewed.yaml`,
+    [
+      'slight: {opengalen: SlightSeverity, confidence: high, rationale: "severity value", needsHumanReview: false}',
+      "strong: {opengalen: StrongSeverityInvented, confidence: high}",
+      'slow: {opengalen: null, confidence: medium, rationale: "no counterpart"}',
+      "NotAClinergyName: {opengalen: Pain}",
+    ].join("\n"),
+  );
+  for (let run = 0; run < 2; run++) { // twice: annotation must replace, not duplicate
+    assertEquals(await mapCli([...args, "--reviewed", `${tmp}/reviewed.yaml`, "--annotate"]), 0);
+  }
+  maps = await read("mappings.yaml");
+  assertEquals([maps.slight.opengalen, maps.slight.method, maps.slight.needsHumanReview], [
+    "SlightSeverity",
+    "reviewed",
+    false,
+  ]);
+  assertEquals([maps.slow.opengalen, maps.slow.method], [null, "reviewed-no-match"]);
+  assert(!("strong" in maps));
+  const summary = await read("summary.yaml");
+  assertEquals(summary.reviewedRejected.map((r: Y) => r.clinergy).sort(), ["NotAClinergyName", "strong"]);
+  assert("strong" in (await read("worklist/value.yaml")));
+
   const formText = await Deno.readTextFile(`${tmp}/out/forms/symptom/ElbowAcheSymptom.yaml`);
-  assertEquals(formText.split("OpenGALEN 8 names (added").length, 2);
-  const form = parse(formText) as { opengalen: { topic: { status: string } } };
-  assertEquals(form.opengalen.topic.status, "exact");
+  assertEquals(formText.split("OpenGALEN 8 mappings (added").length, 2);
+  const og = (parse(formText) as Y).opengalen;
+  assertEquals(og.topic, { opengalen: "ElbowAcheSymptom", method: "exact", needsHumanReview: false });
+  assertEquals(og.values.slight.opengalen, "SlightSeverity");
+  assert(!("strong" in og.values) && !("slow" in og.values)); // nothing unverified, no "no match" noise
+  assert(!formText.includes("best") && !formText.includes("score"));
   await Deno.remove(tmp, { recursive: true });
 });

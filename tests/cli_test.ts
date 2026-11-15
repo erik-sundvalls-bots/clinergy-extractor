@@ -5,6 +5,13 @@ import { parse } from "@std/yaml";
 import { main } from "../clinergy-extract.ts";
 import { buildIs3, buildZip } from "./helpers.ts";
 
+async function* walk(dir: string): AsyncGenerator<string> {
+  for await (const e of Deno.readDir(dir)) {
+    if (e.isDirectory) yield* walk(`${dir}/${e.name}`);
+    else yield `${dir}/${e.name}`;
+  }
+}
+
 const enc = new TextEncoder();
 const fx = new URL("./fixtures/", import.meta.url);
 const readYaml = async (p: string) => parse(await Deno.readTextFile(p)) as Record<string, unknown>;
@@ -24,14 +31,25 @@ Deno.test("cli: synthetic zip + --dumps writes the YAML tree", async () => {
   const form = await readYaml(`${tmp}/out/forms/symptom/ElbowAcheSymptom.yaml`);
   assertEquals(form.display, "elbow ache");
   assertEquals((form.firstLayer as unknown[]).length, 4);
-  const concept = await readYaml(`${tmp}/out/concepts/E/ElbowAcheSymptom.yaml`);
-  assertEquals([concept.id, concept.permanentId], [3, 13]);
-  const exam = await readYaml(`${tmp}/out/exams/location/ElbowLook.yaml`);
-  assertEquals(exam.lateral, true);
-  const rules = await readYaml(`${tmp}/out/sentence-rules/descriptors/Onset.yaml`);
-  assertEquals((rules.rules as { valueForm: string }[])[0].valueForm, "valueAdverb");
-  const map = await readYaml(`${tmp}/out/bodymap/selector.yaml`);
-  assert(Object.keys(map.maps as object).includes("TestAnatomy"));
+  assertEquals(form.concept, "concepts.yaml#ElbowAcheSymptom");
+  type Y = Record<string, Record<string, unknown>>;
+  const concepts = await readYaml(`${tmp}/out/concepts.yaml`) as Y;
+  assertEquals([concepts.ElbowAcheSymptom.id, concepts.ElbowAcheSymptom.permanentId], [3, 13]);
+  assertEquals(concepts.ElbowAcheSymptom.form, "forms/symptom/ElbowAcheSymptom.yaml");
+  const links = await readYaml(`${tmp}/out/concept-links.yaml`) as Y;
+  assertEquals(links.ElbowAcheSymptom.visFeatureAtts, ["Severity", "Onset"]);
+  const exams = await readYaml(`${tmp}/out/exams.yaml`) as Y;
+  assertEquals(exams.ElbowLook.lateral, true);
+  const rules = await readYaml(`${tmp}/out/sentence-rules.yaml`) as Y;
+  const onset = rules.descriptors.Onset as { rules: { valueForm: string }[] };
+  assertEquals(onset.rules[0].valueForm, "valueAdverb");
+  assert(Array.isArray(rules.summaryTypes) && "lexicon" in rules);
+  const map = await readYaml(`${tmp}/out/bodymap.yaml`) as Record<string, { maps: object }>;
+  assert(Object.keys(map["Selector.ini"].maps).includes("TestAnatomy"));
+  // one file per form plus a fixed set of lookup files
+  let files = 0;
+  for await (const _ of walk(`${tmp}/out`)) files++;
+  assertEquals(files, 4 + 10);
   const header = (await Deno.readTextFile(`${tmp}/out/forms/index.yaml`)).split("\n").slice(0, 5).join("\n");
   assert(header.includes("Semantic Technologies") && header.includes("model test_1"));
   await Deno.remove(tmp, { recursive: true });
@@ -69,6 +87,9 @@ Deno.test({
       languageRules: 973,
       valuePrecedences: 871,
     });
+    let files = 0;
+    for await (const _ of walk(`${tmp}/out`)) files++;
+    assertEquals(files, 2121 + 10); // one file per form + lookup files
     if (!Deno.env.get("CLINERGY_KEEP")) await Deno.remove(tmp, { recursive: true });
     else console.log(`kept ${tmp}/out`);
   },

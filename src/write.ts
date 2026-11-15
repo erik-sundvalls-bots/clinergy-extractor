@@ -51,9 +51,6 @@ export class SlugAllocator {
   }
 }
 
-/** First-letter bucket for big folders, e.g. "ElbowAcheSymptom" -> "E". */
-const bucket = (slug: string) => (/^[A-Za-z]/.test(slug) ? slug[0].toUpperCase() : "_");
-
 const obj = <V>(m: Map<string, V>) => Object.fromEntries(m);
 
 export async function writeOutput(k: Knowledge, outDir: string, prov: Provenance): Promise<number> {
@@ -73,19 +70,11 @@ export async function writeOutput(k: Knowledge, outDir: string, prov: Provenance
     written++;
   };
 
-  // File names are allocated once so cross-references are stable.
-  const conceptSlugs = new SlugAllocator();
-  const conceptPath = (n: string) => {
-    const s = conceptSlugs.get(n);
-    return `concepts/${bucket(s)}/${s}.yaml`;
-  };
+  // Form file names are allocated once so cross-references are stable.
   const formSlugs = new SlugAllocator();
   const formPath = (n: string) => `forms/${categoryWord(k.entities.get(n)!.category)}/${formSlugs.get(n)}.yaml`;
-  const examSlugs = new SlugAllocator();
-  const examPath = (n: string) => `exams/${k.exams.get(n)?.group ?? "sub"}/${examSlugs.get(n)}.yaml`;
-  const descSlugs = new SlugAllocator();
 
-  // ---- forms -------------------------------------------------------------------
+  // ---- forms: one file per form topic ------------------------------------------
   const resolver = new Resolver(k);
   const formIndex: Record<string, unknown> = {};
   for (const [name, e] of k.entities) {
@@ -102,7 +91,7 @@ export async function writeOutput(k: Knowledge, outDir: string, prov: Provenance
         summaryType: f.summaryType,
         location: f.location,
         supers: f.supers,
-        concept: `../../${conceptPath(name)}`,
+        concept: `concepts.yaml#${name}`,
         visibilityAncestor: f.visibilityAncestor,
         firstLayer: f.firstLayer,
         moreLayer: f.moreLayer,
@@ -115,131 +104,85 @@ export async function writeOutput(k: Knowledge, outDir: string, prov: Provenance
       [
         "firstLayer = items shown when the form opens; moreLayer = items behind the '>>' button.",
         "inheritance compares each row with visibilityAncestor (nearest supertype with its own rows).",
-        "summaryType names the value set of the topic's own present/absent style control (see sentence-rules/summary-types.yaml).",
+        "concept: key into concepts.yaml at the top of this folder; exam names are keys into exams.yaml.",
+        "summaryType names the value set of the topic's own present/absent style control (sentence-rules.yaml).",
       ],
     );
   }
   await write("forms/index.yaml", formIndex, "Index of form topics (concepts with category 'Complete ...')");
 
-  // ---- concepts ---------------------------------------------------------------
-  const conceptIndex: Record<string, unknown> = {};
+  // ---- concepts: one lookup file for the core facts, one for raw query results ---
+  const concepts: Record<string, unknown> = {};
+  const conceptLinks: Record<string, unknown> = {};
   for (const [name, e] of k.entities) {
-    const path = conceptPath(name);
-    conceptIndex[name] = { id: e.id, display: e.display, category: e.category || null, file: path };
     const { supers: _s, ...links } = e.links;
-    await write(
-      path,
-      {
-        name,
-        id: e.id,
-        permanentId: k.permanentIds.get(name) ?? null,
-        display: e.display,
-        category: e.category || null,
-        summaryType: e.summaryType,
-        relevance: e.relevance,
-        showSubLocations: e.showSubLocations,
-        leftHanded: e.leftHanded,
-        supers: supersOf(e),
-        form: isFormTopic(e) ? `../../${formPath(name)}` : null,
-        visibleFeatures: k.features.get(name) ?? [],
-        criterialLinkSummaries: k.critLinks.get(name) ?? [],
-        laterality: k.laterality.get(name) ?? null,
-        sublocations: k.sublocations.get(name) ?? null,
-        links,
-      },
-      `Concept ${name}`,
-      [
-        "links are the raw results of the engine's per-concept queries (see probe/probe.c for the method names).",
-      ],
-    );
+    concepts[name] = {
+      id: e.id,
+      permanentId: k.permanentIds.get(name) ?? null,
+      display: e.display,
+      category: e.category || null,
+      summaryType: e.summaryType,
+      relevance: e.relevance,
+      showSubLocations: e.showSubLocations,
+      leftHanded: e.leftHanded,
+      supers: supersOf(e),
+      form: isFormTopic(e) ? formPath(name) : null,
+      visibleFeatures: k.features.get(name) ?? [],
+      criterialLinkSummaries: k.critLinks.get(name) ?? [],
+      laterality: k.laterality.get(name) ?? null,
+      sublocations: k.sublocations.get(name) ?? null,
+    };
+    if (Object.keys(links).length) conceptLinks[name] = links;
   }
-  await write("concepts/index.yaml", conceptIndex, "Index of all named concepts in the model (id order)");
+  await write("concepts.yaml", concepts, "All named concepts in the model (id order), keyed by name", [
+    "form: path of the concept's form file (form topics only). Raw per-concept query results are in concept-links.yaml.",
+  ]);
+  await write("concept-links.yaml", conceptLinks, "Raw per-concept query results, keyed by concept name", [
+    "Lists returned by the engine's per-concept methods (see probe/probe.c), e.g. visFeatureAtts = candidate",
+    "feature attributes, sensibles = sensible sanctions, tsLinks = topic-selector links. Concepts without any are omitted.",
+  ]);
 
   // ---- exams ------------------------------------------------------------------
-  const examIndex: Record<string, unknown> = {};
-  for (const [name, x] of k.exams) {
-    const path = examPath(name);
-    examIndex[name] = { group: x.group, lateral: x.lateral, file: path };
-    await write(
-      path,
-      {
-        ...x,
-        subExams: x.subExams.map((s) => ({ exam: s, file: `../../${examPath(s)}` })),
-      },
-      `Examination ${name}`,
-      [
-        "group: root / system / location / sub.  lateral: examined per side.",
-        "signs0 and signs1 are SignsForExam(exam, 0) and (exam, 1): the engine's two sign lists.",
-      ],
-    );
-  }
-  await write("exams/index.yaml", examIndex, "Index of examinations");
+  await write("exams.yaml", obj(k.exams), "Examination tree, keyed by exam name", [
+    "group: root / system / location / sub.  lateral: examined per side.  subExams are keys in this file.",
+    "signs0 and signs1 are SignsForExam(exam, 0) and (exam, 1): the engine's two sign lists.",
+  ]);
 
   // ---- sentence rules ---------------------------------------------------------
-  const descIndex: Record<string, unknown> = {};
+  const descriptors: Record<string, unknown> = {};
   for (const [name, d] of k.descriptors) {
-    const path = `sentence-rules/descriptors/${descSlugs.get(name)}.yaml`;
-    descIndex[name] = { precedence: d.precedence, rules: d.rules.size, file: path };
-    await write(
-      path,
-      {
-        descriptor: name,
-        precedence: d.precedence,
-        rules: [...d.rules].map(([value, r]) => ({
-          value,
-          ...r,
-          valuePrecedence: k.valuePrecedence.get(value) ?? null,
-        })),
-      },
-      `Summary-sentence rules for descriptor ${name}`,
-      [
-        "precedence orders descriptors within a summary sentence; each rule gives the word form",
-        "of a value (valueForm), of the descriptor (descriptorForm), their order and position relative to the topic.",
-      ],
-    );
+    descriptors[name] = {
+      precedence: d.precedence,
+      rules: [...d.rules].map(([value, r]) => ({ value, ...r, valuePrecedence: k.valuePrecedence.get(value) ?? null })),
+    };
   }
-  await write("sentence-rules/index.yaml", descIndex, "Index of sentence-rule descriptors");
   await write(
-    "sentence-rules/value-precedences.yaml",
-    obj(k.valuePrecedence),
-    "Value precedences (ordering of values in sentences)",
-  );
-  await write(
-    "sentence-rules/lexicon.yaml",
+    "sentence-rules.yaml",
     {
-      descriptors: obj(k.descriptorWords),
-      valueAdverbs: obj(k.valueAdverbs),
+      descriptors,
+      valuePrecedences: obj(k.valuePrecedence),
+      summaryTypes: k.lists.get("summaryTypes") ?? [],
+      lexicon: { descriptors: obj(k.descriptorWords), valueAdverbs: obj(k.valueAdverbs) },
     },
-    "Word forms for summary sentences (HEURISTIC scan of the binary model files, review before use)",
+    "Summary-sentence rules",
     [
-      "descriptors: name -> noun / adjective / negative form; valueAdverbs: value -> adverb (e.g. for 'moderately severe').",
+      "descriptors: precedence orders descriptors within a sentence; each rule gives the word form of a value",
+      "(valueForm), of the descriptor (descriptorForm), their order and position relative to the topic.",
+      "valuePrecedences: ordering of values. summaryTypes: present/absent style value sets.",
+      "lexicon: HEURISTIC scan of the binary model files (noun / adjective / negative forms, value adverbs); review before use.",
     ],
-  );
-  await write(
-    "sentence-rules/summary-types.yaml",
-    k.lists.get("summaryTypes") ?? [],
-    "Summary types and their value sets",
   );
 
   // ---- body maps, pick lists, search -----------------------------------------
+  const bodyMaps: Record<string, unknown> = {};
   for (const [file, b] of k.bodyMaps) {
-    await write(
-      `bodymap/${file.replace(/\.ini$/i, "").toLowerCase()}.yaml`,
-      {
-        file,
-        selectors: b.selectors,
-        maps: Object.fromEntries([...b.maps].filter(([, v]) => v.length)),
-      },
-      `Body maps and selector definitions from ${file}`,
-      [
-        "hotspot = [x1, x2, y1, y2] as written in the INI file; inset = bitmap shown after clicking.",
-      ],
-    );
+    bodyMaps[file] = { selectors: b.selectors, maps: Object.fromEntries([...b.maps].filter(([, v]) => v.length)) };
   }
-  for (const [file, rows] of k.topicLists) {
-    await write(`topic-lists/${file.replace(/\.ini$/i, "").toLowerCase()}.yaml`, rows, `Quick-pick topic list ${file}`);
-  }
-  await write("search/search-space.yaml", obj(k.search), "Type-ahead search index: typed text -> offered concepts");
+  await write("bodymap.yaml", bodyMaps, "Body maps and selector definitions, keyed by INI file", [
+    "hotspot = [x1, x2, y1, y2] as written in the INI file; inset = bitmap shown after clicking.",
+  ]);
+  await write("topic-lists.yaml", obj(k.topicLists), "Quick-pick topic lists, keyed by INI file");
+  await write("search-space.yaml", obj(k.search), "Type-ahead search index: typed text -> offered concepts");
 
   // ---- model summary + README --------------------------------------------------
   const stats = statistics(k);
@@ -267,12 +210,14 @@ ${s.visibleFeatureRows} visible form items on ${s.conceptsWithVisibleFeatures} c
 | Path | Contents |
 |---|---|
 | \`forms/<category>/<Topic>.yaml\` | one data-entry form per topic: first-layer and ">>" items in order with their curated values, inheritance flags, associated symptoms/signs, diagnoses, examinations |
-| \`concepts/<A-Z>/<Name>.yaml\` | every named concept: ids, display text, supertypes, visibility rows, all per-concept query results |
-| \`exams/<group>/<Exam>.yaml\` | the examination tree: signs, sub-exams, linked symptoms, laterality |
-| \`sentence-rules/\` | descriptor precedences, per-value word forms and positions, value precedences, summary types, lexicon (noun/adjective/negative forms, adverbs) |
-| \`bodymap/\` | body-map click areas and selector buttons from the Compdata INI files |
-| \`topic-lists/\` | short quick-pick lists (common topics, symptoms, ...) |
-| \`search/search-space.yaml\` | the type-ahead search index |
-| \`*/index.yaml\`, \`model.yaml\` | indexes, counts and global lists |
+| \`forms/index.yaml\` | form topics with display text and file path |
+| \`concepts.yaml\` | every named concept, keyed by name: ids, display text, category, supertypes, visibility rows, form path |
+| \`concept-links.yaml\` | raw per-concept query results (candidate attributes, sanctions, links) |
+| \`exams.yaml\` | the examination tree: signs, sub-exams, linked symptoms, laterality |
+| \`sentence-rules.yaml\` | descriptor precedences and per-value rules, value precedences, summary types, lexicon |
+| \`bodymap.yaml\` | body-map click areas and selector buttons from the Compdata INI files |
+| \`topic-lists.yaml\` | short quick-pick lists (common topics, symptoms, ...) |
+| \`search-space.yaml\` | the type-ahead search index |
+| \`model.yaml\` | counts and global lists |
 `;
 }

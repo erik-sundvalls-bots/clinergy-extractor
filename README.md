@@ -1,7 +1,9 @@
 # clinergy-extractor
 
 Turns your own copy of `ClinergyDemo.zip`, the 1998 demo of the Clinergy / PEN&PAD structured data-entry system, into a
-tree of human-readable YAML files. It also includes a helper that suggests OpenGALEN 8 names for the Clinergy names.
+tree of human-readable YAML files, one per data-entry form. It also includes tools to map Clinergy names to OpenGALEN 8
+(a deterministic preprocessor, a read-only OpenGALEN MCP server and an AI-agent skill), and a script that installs and
+runs the demo itself under Wine.
 
 This repository contains **only our own code**. It contains no Clinergy program code, model files or extracted content.
 The demo's content is © 1997-8 Semantic Technologies Ltd / Victoria University of Manchester, All Rights Reserved. The
@@ -48,24 +50,28 @@ takes about 15 seconds. Options:
 
 ```
 out/
-  README.md                         provenance and copyright notice
+  README.md                         provenance, copyright notice, field guide
   model.yaml                        model version, counts, global lists
   forms/<category>/<Topic>.yaml     one data-entry form per topic (symptom, sign, disease, ...)
-  concepts/<A-Z>/<Name>.yaml        every named concept: ids, display text, supertypes, all per-concept query results
-  exams/<group>/<Exam>.yaml         examination tree (root, system, location, sub)
-  sentence-rules/                   descriptor precedences, per-value word forms, value precedences, summary types,
-                                    lexicon.yaml (noun/adjective/negative forms and adverbs, heuristic)
-  bodymap/<file>.yaml               body-map click areas and selector buttons from the INI files
-  topic-lists/<file>.yaml           quick-pick lists
-  search/search-space.yaml          type-ahead search index
-  */index.yaml                      indexes with file paths
+  forms/index.yaml                  topic -> form file, display text, category
+  concepts.yaml                     every named concept: ids, display text, category, supertypes, form path, visible
+                                    features, laterality and sub-locations
+  concept-links.yaml                raw per-concept engine query results (links, sanctions), for concepts that have any
+  exams.yaml                        examination tree (root, system, location, sub)
+  sentence-rules.yaml               descriptor precedences and per-value word forms, value precedences, summary types,
+                                    lexicon (noun/adjective/negative forms and adverbs, heuristic)
+  bodymap.yaml                      body-map click areas and selector buttons, per INI file
+  topic-lists.yaml                  quick-pick lists
+  search-space.yaml                 type-ahead search index
 ```
 
 Every YAML file starts with a comment header that says what it is, where it came from and who holds the rights. A form
 file lists `firstLayer` (shown when the form opens) and `moreLayer` (behind the `>>` button) in order. Each item has its
 curated values and an `inheritance` flag that compares it with the nearest supertype that has its own rows. The file
-then lists associated symptoms and signs, diagnoses and examinations. For the 1998 demo the tree has 2,121 forms, 7,442
-visible items on 2,057 concepts, 230 exams and 222 sentence-rule descriptors, in about 10,300 files.
+then lists associated symptoms and signs, diagnoses and examinations. Its `concept:` key (`concepts.yaml#<Name>`) and
+exam names point into the lookup files. For the 1998 demo there are 2,121 forms, 7,442 visible items on 2,057 concepts,
+230 exams and 222 sentence-rule descriptors, in 2,131 files (about 20 MB). The largest files are `concept-links.yaml`
+(5.6 MB) and `concepts.yaml` (3.4 MB). Forms are 1 to 7 KB each.
 
 ## How it works, and why
 
@@ -82,28 +88,110 @@ visible items on 2,057 concepts, 230 exams and 222 sentence-rule descriptors, in
    model files, so they are marked for review.
 4. **Writing** is done by `src/write.ts` with a small YAML emitter, `src/yaml.ts`, that keeps short lists on one line.
 
-## OpenGALEN 8 name mapping
+## Mapping to OpenGALEN 8
 
-```sh
-deno task map out/ opengalen8-owl-sources.zip map/ --annotate
+The 1998 model adapted a GALEN Common Reference Model, so about a third of its names exist unchanged in OpenGALEN 8.
+Matching the rest needs judgement: `mild` looks like `MildSadness` but means `MildSeverity`. That judgement is split
+from the mechanical work.
+
+1. **Preprocess** (deterministic):
+
+   ```sh
+   deno task map out/ opengalen8-owl-sources.zip map/
+   ```
+
+   Download the OpenGALEN 8 OWL release from <https://opengalen.eggbird.eu/download/opengalen8-owl-sources.zip>, listed
+   on [the sources page](https://opengalen.eggbird.eu/sources/sources.html). You can pass the zip, its unpacked folder,
+   or one `.owl` or `.dump` file. It writes:
+   - `map/mappings.yaml`: verified mappings only. `exact` means an identical name. `normalised` means the only name that
+     is equal after ignoring case and punctuation, dropping a `NAMED` prefix and folding spelling variants (ae/e, oe/e,
+     -isation/-ization, -our/-or, -ant/-ent, plurals); these are flagged `needsHumanReview`.
+   - `map/worklist/<kind>.yaml`: every other name (form topics, exams, descriptors, criterial links, values, other
+     concepts). Each entry carries its context from the model: display text, category, supertypes, the forms and
+     features that use it, sibling values, sentence words. It also has up to 5 `unverifiedHints`, which are lexical
+     look-alikes and not mappings.
+   - `map/summary.yaml`: counts.
+
+   For the 1998 demo, 2,663 of 8,142 names match exactly and 98 after normalisation; 5,381 go to the worklist.
+2. **Review** the worklist, by hand or with an AI agent. The agent follows the skill in
+   [`ai/map-to-opengalen/SKILL.md`](ai/map-to-opengalen/SKILL.md) and uses the OpenGALEN MCP server below. It writes its
+   decisions to a reviewed file, e.g. `map/reviewed.yaml`, with a confidence, a rationale and `needsHumanReview` for
+   each entry. It must never invent names.
+3. **Merge and annotate**:
+
+   ```sh
+   deno task map out/ opengalen8-owl-sources.zip map/ --reviewed map/reviewed.yaml --annotate
+   ```
+
+   Every reviewed OpenGALEN name is checked against the release. Unknown names are rejected and listed in
+   `summary.yaml`. Accepted entries move to `mappings.yaml` with method `reviewed`. `--annotate` appends an `opengalen:`
+   block to each form, with verified and reviewed mappings only and no guesses. Re-running replaces the block.
+
+OpenGALEN content is under the GALEN Open Source License.
+
+### OpenGALEN MCP server
+
+`mcp/opengalen-mcp.ts` is a small, read-only [MCP](https://modelcontextprotocol.io/) server (stdio transport). It reads
+the public OWL release directly: loading takes about 2 s and 0.5 GB RAM. It has four tools (the browser link points to
+the [OpenGALEN browser](https://pen-pad-revival.github.io/opengalen-browser/)):
+
+| Tool              | Returns                                                                                                    |
+| ----------------- | ---------------------------------------------------------------------------------------------------------- |
+| `search_concepts` | names and labels containing all query words (CamelCase split, spelling folded); generated names on request |
+| `get_concept`     | kind, IRI, parents, named children, equivalents, definition, sanctions, annotations, browser link          |
+| `get_ancestors`   | all ancestors with their distance                                                                          |
+| `check_names`     | whether names exist (exact, case-sensitive), for verifying mappings                                        |
+
+The hierarchy comes from the dump without property chains, because the with-chains dumps contain known inversions. To
+use the server, add it to your MCP client's configuration (e.g. `mcp.json` or `claude_desktop_config.json`), together
+with the skill:
+
+```json
+{
+  "mcpServers": {
+    "opengalen": {
+      "command": "deno",
+      "args": [
+        "run",
+        "--allow-read",
+        "--allow-env",
+        "/path/to/clinergy-extractor/mcp/opengalen-mcp.ts",
+        "--source",
+        "/path/to/opengalen8-owl-sources.zip"
+      ]
+    }
+  }
+}
 ```
 
-Download the OpenGALEN 8 OWL release from <https://opengalen.eggbird.eu/download/opengalen8-owl-sources.zip>, listed on
-[the sources page](https://opengalen.eggbird.eu/sources/sources.html). You can pass the zip as is, its unpacked folder,
-or a single `.owl` or `.dump` file. The tool reads every class and property declared in the OWL Functional-syntax files,
-plus the classified hierarchy dump. Each Clinergy name then gets one status:
+Then put `ai/map-to-opengalen/` where your agent finds skills, or paste its `SKILL.md` into the prompt. Then ask it to
+work through `map/worklist/descriptor.yaml`.
 
-| Status       | Meaning                                                                                                                                                                                            |
-| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `exact`      | the identical name exists in OpenGALEN 8. This is the only status that counts as a mapping.                                                                                                        |
-| `normalised` | the names are equal after ignoring case and punctuation, dropping a `NAMED` prefix and allowing for spelling variants (ae/e, oe/e, -isation/-ization, -our/-or, -ant/-ent, plurals). Needs review. |
-| `candidate`  | up to 5 suggestions, ranked by weighted token overlap (Dice score 0–1). Needs review.                                                                                                              |
-| `unmapped`   | nothing scored above `--min-score`, which defaults to 0.5.                                                                                                                                         |
+## Running the demo under Wine
 
-It writes `map/summary.yaml` (coverage per kind of name), `map/index.yaml` and one file per name in
-`map/names/<A-Z>/<Name>.yaml`. With `--annotate`, an `opengalen:` block is appended to each form file, and re-running
-replaces it. For the 1998 demo, 2,651 of 7,687 concept names (34.5 %) match exactly, including 274 of the 2,121 form
-topics. OpenGALEN content is under the GALEN Open Source License.
+`clinergy-wine.ts` installs the demo into a 32-bit Wine prefix without its installer, then starts it:
+
+```sh
+deno run -A clinergy-wine.ts install ClinergyDemo.zip   # prefix: ~/.cache/clinergy-extractor/wine-clinergy (--prefix DIR)
+deno run -A clinergy-wine.ts demo                       # start Pen&Pad, load the model, open the Symptom Selector
+```
+
+What it does, all found by trial with Wine 10.0:
+
+- It creates a 32-bit prefix (`WINEARCH=win32`) that reports Windows XP.
+- `SETUP.EXE` is a 16-bit InstallShield 3 launcher, so the payload is unpacked directly. Programs and runtime DLLs go to
+  `C:\Clinergy\Programs`. Model, INI and bitmap files go to `C:\Clinergy\Compdata\{archive,ini,bmp}`. `Penpad.ini` goes
+  to `C:\windows` (it sets `WorkDir=C:\clinergy\compdata`).
+- It uses the bundled `Mfc42.dll` but not the bundled 1997 `Msvcrt.dll`:
+  `WINEDLLOVERRIDES="mscoree,mshtml,winemenubuilder.exe=d;mfc42,mfc42u=n;msvcrt=b"`.
+- `penpad.exe` runs from `C:\Clinergy\Programs`. _Load model_ takes the name `model`, which the engine resolves in
+  `Compdata\archive`.
+- The frame window's menu bar does not appear under Wine, so `demo` uses our helper `wine/ppctl.c` to send the menu
+  commands: `WM_COMMAND` 32771 = Load model, 32772 = Symptom Selector. After that, the body map, topic lists, forms and
+  the sentence summary work with the mouse.
+- Not working in this setup: the host demos (`VB Demo`, `Gen Demo`, `Win Demo`). They drive Pen&Pad through its
+  `PENPAD.CONNECT` OLE automation server and expect the VB4 runtime and a patient database, `penpad.mdb`, that is not in
+  the zip.
 
 ## Tests
 

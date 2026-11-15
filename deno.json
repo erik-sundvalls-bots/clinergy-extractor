@@ -8,8 +8,10 @@
   "tasks": {
     "extract": "deno run -A clinergy-extract.ts",
     "map": "deno run -A clinergy-to-opengalen.ts",
+    "mcp": "deno run --allow-read --allow-env mcp/opengalen-mcp.ts",
+    "wine": "deno run -A clinergy-wine.ts",
     "test": "deno test -A",
-    "check": "deno check *.ts src/*.ts tests/*.ts"
+    "check": "deno check *.ts src/*.ts mcp/*.ts tests/*.ts"
   },
   "fmt": {
     "lineWidth": 120

@@ -1,18 +1,26 @@
 /**
- * Match Clinergy names to OpenGALEN 8 names.
+ * Deterministic, lexical matching of Clinergy names to OpenGALEN 8 names.
  *
  * The 1998 Clinergy model is an adaptation of a GALEN Common Reference Model,
- * so many names are shared, but many are not (Clinergy uses e.g.
- * "AbsoluteSeverity" where OpenGALEN uses hasSeverity + Severity). We never
- * invent a mapping. Each Clinergy name gets exactly one status:
+ * so many names are shared, but many are not (Clinergy uses descriptor
+ * attributes where OpenGALEN uses a property plus a modifier class). This
+ * module never decides a non-identical mapping. Each name gets one status:
  *
- *   exact       identical name exists in OpenGALEN 8 (only this tier is a mapping)
- *   normalised  equal after normalisation: case, punctuation, a "NAMED" prefix,
- *               British/American and simple spelling variants -> needs review
- *   candidate   no equal name; up to N scored suggestions from token overlap -> needs review
- *   unmapped    nothing scored above the threshold
+ *   exact       identical name exists in OpenGALEN 8               -> recorded as a mapping
+ *   normalised  equal after normalisation: case, punctuation, a
+ *               "NAMED" prefix, simple spelling variants            -> recorded as a mapping, needsHumanReview
+ *   candidate   only lexical look-alikes (scored token overlap)     -> NOT a mapping: written to the review
+ *                                                                      worklist as unverified hints
+ *   unmapped    nothing similar                                     -> review worklist without hints
+ *
+ * Lexical similarity says nothing about meaning ("mild" looks like
+ * "MildSadness"), which is why candidates only ever become hints for the
+ * review step described in ai/map-to-opengalen/SKILL.md.
  */
-import type { OgKind, OgNames } from "./opengalen.ts";
+import type { OgKind } from "./opengalen.ts";
+
+/** OpenGALEN name -> kind. */
+export type OgNames = Map<string, OgKind>;
 
 /** Split CamelCase / digits / punctuation into lower-case tokens. */
 export function tokens(name: string): string[] {
