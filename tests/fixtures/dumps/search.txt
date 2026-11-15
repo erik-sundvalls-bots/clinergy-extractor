@@ -1,0 +1,7 @@
+
+elb
+	ElbowAcheSymptom
+	ElbowStrain
+
+ach
+	ElbowAcheSymptom

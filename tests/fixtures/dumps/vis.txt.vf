@@ -1,0 +1,5 @@
+AcheSymptom VisualF add Severity { slight } { strong }  0.
+AcheSymptom VisualF add Onset { slow } { fast }  1.
+ElbowAcheSymptom VisualF add Severity { slight } { strong }  0.
+ElbowAcheSymptom VisualF add Onset { fast } { slow }  1.
+ElbowAcheSymptom VisualF add Duration { TemporalValue }  0.

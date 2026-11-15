@@ -1,0 +1,21 @@
+{
+  "imports": {
+    "@std/assert": "jsr:@std/assert@^1",
+    "@std/cli": "jsr:@std/cli@^1",
+    "@std/path": "jsr:@std/path@^1",
+    "@std/yaml": "jsr:@std/yaml@^1"
+  },
+  "tasks": {
+    "extract": "deno run -A clinergy-extract.ts",
+    "map": "deno run -A clinergy-to-opengalen.ts",
+    "test": "deno test -A",
+    "check": "deno check *.ts src/*.ts tests/*.ts"
+  },
+  "fmt": {
+    "lineWidth": 120
+  },
+  "exclude": [
+    "out/",
+    "map/"
+  ]
+}

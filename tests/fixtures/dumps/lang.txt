@@ -1,0 +1,5 @@
+Severity descPrecedence 10.
+Severity MakeLanguageRule slight valueAdjective NoDescriptor descFirst beforeTopic.
+Severity MakeLanguageRule strong valueAdjective NoDescriptor descFirst beforeTopic.
+Onset descPrecedence 20.
+Onset MakeLanguageRule fast valueAdverb descNoun valueFirst afterTopic.

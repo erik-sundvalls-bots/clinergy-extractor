@@ -1,0 +1,11 @@
+# Generated output and anything from the demo: never commit (copyrighted content)
+out/
+map/
+*.zip
+*.exe
+*.dll
+*.28
+*.a28
+*.c28
+*.e28
+*.p28

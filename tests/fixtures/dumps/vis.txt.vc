@@ -1,0 +1,1 @@
+ElbowAcheSymptom VisCritLinkSummary add ConseqSwelling { hasClinicalAbsence absence } { hasClinicalAbsence presence } 1.
