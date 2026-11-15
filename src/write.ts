@@ -5,6 +5,8 @@
  */
 import { dirname, join } from "@std/path";
 import { toYaml } from "./yaml.ts";
+import type { ImageSet } from "./images.ts";
+import type { MapLocation } from "./parse.ts";
 import {
   assembleForm,
   categoryWord,
@@ -53,7 +55,7 @@ export class SlugAllocator {
 
 const obj = <V>(m: Map<string, V>) => Object.fromEntries(m);
 
-export async function writeOutput(k: Knowledge, outDir: string, prov: Provenance): Promise<number> {
+export async function writeOutput(k: Knowledge, outDir: string, prov: Provenance, images?: ImageSet): Promise<number> {
   let written = 0;
   const header = (title: string, extra: string[] = []) => [
     title,
@@ -174,13 +176,61 @@ export async function writeOutput(k: Knowledge, outDir: string, prov: Provenance
   );
 
   // ---- body maps, pick lists, search -----------------------------------------
+  // Images are linked by bitmap name (case-insensitive, as on Windows).
+  const img = (bmp: string | null) => {
+    const e = bmp ? images?.loose.get(bmp.toLowerCase()) : undefined;
+    return e ? `images/${e.file}` : null;
+  };
+  const withImage = (l: MapLocation) => ({ ...l, insetImage: img(l.inset), sublocations: l.sublocations });
   const bodyMaps: Record<string, unknown> = {};
   for (const [file, b] of k.bodyMaps) {
-    bodyMaps[file] = { selectors: b.selectors, maps: Object.fromEntries([...b.maps].filter(([, v]) => v.length)) };
+    bodyMaps[file] = {
+      selectors: b.selectors.map((s) => ({
+        ...s,
+        options: s.options.map((o) => ({ ...o, bitmapImages: o.bitmaps.map(img) })),
+      })),
+      mainGraphics: Object.fromEntries([...b.mainGraphics].map(([m, g]) => [m, {
+        concept: g.concept,
+        hotspot: g.hotspot,
+        picture: g.inset,
+        image: img(g.inset),
+        rect: g.insetRect,
+      }])),
+      maps: Object.fromEntries([...b.maps].filter(([, v]) => v.length).map(([m, v]) => [m, v.map(withImage)])),
+    };
   }
   await write("bodymap.yaml", bodyMaps, "Body maps and selector definitions, keyed by INI file", [
-    "hotspot = [x1, x2, y1, y2] as written in the INI file; inset = bitmap shown after clicking.",
+    "hotspot = [top, bottom, left, right] in pixels of the picture being clicked (as written in the INI file):",
+    "  a map's locations are on its mainGraphics picture (or the BEGIN location's inset); a location's",
+    "  sublocations are on that location's inset picture. Checked by drawing them on the extracted images.",
+    "inset = picture shown after clicking a location; insetRect / rect = [left, top, width, height] where it is",
+    "drawn in the selector's graphic window. insetImage / image / bitmapImages = the PNG under images/.",
   ]);
+  if (images) {
+    for (const [rel, bytes] of images.files) {
+      const p = join(outDir, "images", rel);
+      await Deno.mkdir(dirname(p), { recursive: true });
+      await Deno.writeFile(p, bytes);
+      written++;
+    }
+    const counts: Record<string, number> = {};
+    for (const e of images.entries) counts[e.format] = (counts[e.format] ?? 0) + 1;
+    await write(
+      "images.yaml",
+      Object.fromEntries(images.entries.map(({ file, sizes, ...e }) => [file ? `images/${file}` : `error:${e.source}`, {
+        ...e,
+        ...(sizes ? { sizes: sizes.map((x) => ({ ...x, file: `images/${x.file}` })) } : {}),
+      }])),
+      "Every image found in the demo, converted to PNG (icons and cursors also kept as .ico/.cur), keyed by output file",
+      [
+        `Found: ${Object.entries(counts).map(([f, n]) => `${n} ${f}`).join(", ")}.`,
+        "source = file inside the installer (GroupN/... = payload of _SETUP.1-5; zip/... = outer zip and _SETUP.LIB).",
+        "format: bmp = bitmap file, dib = RT_BITMAP resource, ico/cur = icon/cursor group (one PNG per size in sizes),",
+        "wmf = Windows metafile resource kept as is. usedFor: from the body-map INI files, MFC toolbar resources and",
+        "the first icon of each EXE; empty when not known. Images from bundled runtime DLLs/OCXs are included as found.",
+      ],
+    );
+  }
   await write("topic-lists.yaml", obj(k.topicLists), "Quick-pick topic lists, keyed by INI file");
   await write("search-space.yaml", obj(k.search), "Type-ahead search index: typed text -> offered concepts");
 
@@ -215,7 +265,8 @@ ${s.visibleFeatureRows} visible form items on ${s.conceptsWithVisibleFeatures} c
 | \`concept-links.yaml\` | raw per-concept query results (candidate attributes, sanctions, links) |
 | \`exams.yaml\` | the examination tree: signs, sub-exams, linked symptoms, laterality |
 | \`sentence-rules.yaml\` | descriptor precedences and per-value rules, value precedences, summary types, lexicon |
-| \`bodymap.yaml\` | body-map click areas and selector buttons from the Compdata INI files |
+| \`bodymap.yaml\` | body-map click areas and selector buttons from the Compdata INI files, linked to their pictures |
+| \`images/\`, \`images.yaml\` | every picture and icon in the demo as PNG (icons also as .ico): bodymap/, buttons/, bitmaps/, resources/, icons/, metafiles/ |
 | \`topic-lists.yaml\` | short quick-pick lists (common topics, symptoms, ...) |
 | \`search-space.yaml\` | the type-ahead search index |
 | \`model.yaml\` | counts and global lists |

@@ -15,6 +15,11 @@ export interface Installer {
   modelFiles: Map<string, Uint8Array>;
   /** Compdata INI files keyed by base name (Selector.ini, Symptoms.ini, ...) */
   inis: Map<string, string>;
+  /**
+   * the other files of the outer zip ("zip/SETUP.EXE", ...) and the contents of the
+   * installer's own library archive ("zip/_SETUP.LIB/_ISRES.DLL", ...); used for images
+   */
+  extra: Map<string, Uint8Array>;
 }
 
 const base = (p: string) => p.slice(p.lastIndexOf("/") + 1);
@@ -38,7 +43,18 @@ export async function unpackClinergyZip(zipBytes: Uint8Array): Promise<Installer
   const latin1 = new TextDecoder("windows-1252");
   const inis = new Map<string, string>();
   for (const [p, b] of files) if (/\.ini$/i.test(p)) inis.set(base(p), latin1.decode(b));
-  return { files, programDir: dir(termEng), modelFiles, inis };
+  const extra = new Map<string, Uint8Array>();
+  for (const e of zip.entries) {
+    if (e.isDirectory || /^_SETUP\.\d+$/i.test(base(e.name))) continue;
+    const b = await zip.read(e);
+    extra.set(`zip/${e.name}`, b);
+    if (/\.lib$/i.test(e.name) && b.length > 4 && b[0] === 0x13 && b[1] === 0x5d && b[2] === 0x65 && b[3] === 0x8c) {
+      try {
+        for (const [p, f] of extractAll([b])) extra.set(`zip/${e.name}/${p}`, f);
+      } catch { /* not an InstallShield 3 library after all */ }
+    }
+  }
+  return { files, programDir: dir(termEng), modelFiles, inis, extra };
 }
 
 /**

@@ -26,6 +26,7 @@ import { defaultPrefix, dumpWithWine, readDumps } from "./src/wine.ts";
 import { buildKnowledge, statistics } from "./src/knowledge.ts";
 import { writeOutput } from "./src/write.ts";
 import { descriptorWords, valueAdverbs } from "./src/lexicon.ts";
+import { bodyMapUsage, collectImages, otherBitmapMentions } from "./src/images.ts";
 
 const USAGE = "usage: deno run -A clinergy-extract.ts <ClinergyDemo.zip> <output-dir> [--wine-prefix DIR] " +
   "[--wine-arch win32|win64] [--probe-exe FILE] [--dumps DIR] [--verbose]";
@@ -71,16 +72,29 @@ export async function main(argv: string[]): Promise<number> {
     descriptorWords: descriptorWords([model(".p28"), model(".c28")].filter((x): x is Uint8Array => !!x)),
     valueAdverbs: model(".e28") ? valueAdverbs(model(".e28")!) : new Map(),
   });
+  // Pictures and icons: loose bitmaps go to images/bodymap, images/buttons or images/bitmaps by their use.
+  const usage = bodyMapUsage(k.bodyMaps);
+  const base = (p: string) => p.slice(p.lastIndexOf("/") + 1).toLowerCase();
+  const images = await collectImages(
+    new Map([...inst.files, ...inst.extra]),
+    (p) => p.startsWith("zip/") ? "bitmaps/installer" : usage.get(base(p))?.dir ?? "bitmaps",
+  );
+  const programs = new Map([...inst.files].filter(([p]) => p.startsWith(inst.programDir + "/")));
+  const mentions = otherBitmapMentions(inst.inis, programs);
+  for (const e of images.entries) {
+    if (e.format !== "bmp" || e.source.startsWith("zip/")) continue;
+    e.usedFor.push(...(usage.get(base(e.source))?.usedFor ?? []), ...(mentions.get(base(e.source)) ?? []));
+  }
   await Deno.mkdir(outDir, { recursive: true });
   const n = await writeOutput(k, outDir, {
     source: basename(zipPath),
     sha256,
     extractedAt: new Date().toISOString().slice(0, 10),
-  });
+  }, images);
   const s = statistics(k);
   console.error(
     `Wrote ${n} files to ${outDir}: ${s.completeTopics} forms, ${s.entitiesNamed} concepts, ${s.exams} exams, ` +
-      `${s.languageDescriptors} sentence-rule descriptors.`,
+      `${s.languageDescriptors} sentence-rule descriptors, ${images.entries.length} images.`,
   );
   return 0;
 }

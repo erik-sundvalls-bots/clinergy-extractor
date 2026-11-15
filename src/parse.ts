@@ -291,6 +291,8 @@ export interface MapLocation extends Hotspot {
 export interface BodyMapFile {
   selectors: Selector[];
   maps: Map<string, MapLocation[]>;
+  /** per map: the MAINGRAPHIC line, i.e. the picture the map's location hotspots are drawn on */
+  mainGraphics: Map<string, MapLocation>;
 }
 
 /**
@@ -300,10 +302,15 @@ export interface BodyMapFile {
  * of Manmap/Womanmap) hold body-map click areas: a BEGIN/LOCATION line is
  *   [label,]Concept,x1,x2,y1,y2[,inset.bmp,ix1,iy1,ix2,iy2]
  * and following SUBLOCATION lines are click areas on that location's inset.
- * Hotspot numbers are kept exactly as written.
+ * A MAINGRAPHIC line (same layout) names the map's base picture.
+ * Hotspot numbers are kept exactly as written. Checked against the pictures,
+ * they are [top, bottom, left, right] in pixels of the picture being clicked:
+ * locations on the map's main graphic, sublocations on the location's inset.
+ * The inset rectangle is [left, top, width, height] in the graphic window.
  */
 export function parseBodyMapIni(text: string): BodyMapFile {
-  const res: BodyMapFile = { selectors: [], maps: new Map() };
+  const res: BodyMapFile = { selectors: [], maps: new Map(), mainGraphics: new Map() };
+  let mapName = "_toplevel";
   type Cur = { kind: "selector"; sel: Selector } | { kind: "map"; locs: MapLocation[] } | null;
   const top: MapLocation[] = [];
   res.maps.set("_toplevel", top);
@@ -323,6 +330,7 @@ export function parseBodyMapIni(text: string): BodyMapFile {
       } else {
         const locs: MapLocation[] = [];
         res.maps.set(b[1], locs);
+        mapName = b[1];
         cur = { kind: "map", locs };
       }
       mode = null;
@@ -333,7 +341,7 @@ export function parseBodyMapIni(text: string): BodyMapFile {
       continue;
     }
     if (!cur) continue;
-    if (line === "BEGIN" || line === "LOCATION" || line === "SUBLOCATION") {
+    if (line === "BEGIN" || line === "LOCATION" || line === "SUBLOCATION" || line === "MAINGRAPHIC") {
       mode = line;
       continue;
     }
@@ -353,7 +361,17 @@ export function parseBodyMapIni(text: string): BodyMapFile {
     }
     if (f.length < 5) continue;
     const [label, g] = isInt(f[1]) ? [null, f] : [f[0], f.slice(1)];
-    if (mode === "BEGIN" || mode === "LOCATION") {
+    if (mode === "MAINGRAPHIC") {
+      res.mainGraphics.set(mapName, {
+        label,
+        concept: g[0],
+        hotspot: g.slice(1, 5).map(Number),
+        inset: g[5] ?? null,
+        insetRect: g.length > 9 ? g.slice(6, 10).map(Number) : null,
+        root: false,
+        sublocations: [],
+      });
+    } else if (mode === "BEGIN" || mode === "LOCATION") {
       loc = {
         label,
         concept: g[0],

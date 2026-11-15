@@ -4,6 +4,7 @@ import { assert, assertEquals } from "@std/assert";
 import { parse } from "@std/yaml";
 import { main } from "../clinergy-extract.ts";
 import { buildIs3, buildZip } from "./helpers.ts";
+import { bmpFile, dib } from "./image_fixtures.ts";
 
 async function* walk(dir: string): AsyncGenerator<string> {
   for await (const e of Deno.readDir(dir)) {
@@ -24,6 +25,7 @@ Deno.test("cli: synthetic zip + --dumps writes the YAML tree", async () => {
     { path: "Group3/Model.a28", data: enc.encode("fake") },
     { path: "Group4/Selector.ini", data: await ini("Selector.ini") },
     { path: "Group4/Symptoms.ini", data: await ini("Symptoms.ini") },
+    { path: "Group5/Elbow.bmp", data: bmpFile(dib({ width: 1, height: 1, bpp: 24, pixels: [[[9, 8, 7]]] })) },
   ]);
   await Deno.writeFile(`${tmp}/demo.zip`, await buildZip({ "_SETUP.1": parts[0] }));
   const code = await main([`${tmp}/demo.zip`, `${tmp}/out`, "--dumps", new URL("dumps", fx).pathname]);
@@ -46,10 +48,17 @@ Deno.test("cli: synthetic zip + --dumps writes the YAML tree", async () => {
   assert(Array.isArray(rules.summaryTypes) && "lexicon" in rules);
   const map = await readYaml(`${tmp}/out/bodymap.yaml`) as Record<string, { maps: object }>;
   assert(Object.keys(map["Selector.ini"].maps).includes("TestAnatomy"));
+  // the inset named "elbow.bmp" in the INI is linked to the extracted picture (case-insensitive)
+  const anatomy = (map["Selector.ini"].maps as Record<string, { inset: string; insetImage: string | null }[]>)
+    .TestAnatomy;
+  assertEquals(anatomy.find((l) => l.inset === "elbow.bmp")!.insetImage, "images/bodymap/Elbow.png");
+  const images = await readYaml(`${tmp}/out/images.yaml`) as Y;
+  assertEquals(images["images/bodymap/Elbow.png"].width, 1);
+  assert(String(images["images/bodymap/Elbow.png"].usedFor).includes("close-up of Elbow"));
   // one file per form plus a fixed set of lookup files
   let files = 0;
   for await (const _ of walk(`${tmp}/out`)) files++;
-  assertEquals(files, 4 + 10);
+  assertEquals(files, 4 + 11 + 1); // forms + lookup files + one picture
   const header = (await Deno.readTextFile(`${tmp}/out/forms/index.yaml`)).split("\n").slice(0, 5).join("\n");
   assert(header.includes("Semantic Technologies") && header.includes("model test_1"));
   await Deno.remove(tmp, { recursive: true });
@@ -89,7 +98,7 @@ Deno.test({
     });
     let files = 0;
     for await (const _ of walk(`${tmp}/out`)) files++;
-    assertEquals(files, 2121 + 10); // one file per form + lookup files
+    assertEquals(files, 2121 + 11 + 625); // one file per form + lookup files + images
     if (!Deno.env.get("CLINERGY_KEEP")) await Deno.remove(tmp, { recursive: true });
     else console.log(`kept ${tmp}/out`);
   },
