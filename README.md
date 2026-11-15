@@ -230,12 +230,80 @@ What it does, all found by trial with Wine 10.0:
   `PENPAD.CONNECT` OLE automation server and expect the VB4 runtime and a patient database, `penpad.mdb`, that is not in
   the zip.
 
+## Summary sentences
+
+`src/sentence.ts` turns a structured finding into one English summary sentence. `render(finding, knowledge)` does no
+I/O. The knowledge is the extractor output: `sentence-rules.yaml` (one file, with `descriptors`, `valuePrecedences`,
+`summaryTypes` and `lexicon`), `concepts.yaml` and `concept-links.yaml` (locative links such as `in Thumb` supply the
+preposition).
+
+```sh
+deno task sentence out/ finding.yaml
+```
+
+`finding.yaml` is one finding, a list of findings, or a list of `{ finding }` wrappers:
+
+```yaml
+topic: ThumbPainSymptom
+location: Thumb
+laterality: right # left | right
+subLocation: DistalPhalanx # optional
+summary: presence # rendered via the topic's summary type, e.g. hasClinicalAbsence
+qualifiers:
+  - descriptor: Severity
+    value: moderate
+  - descriptor: Duration
+    value: week
+    number: 2
+    unit: week
+```
+
+Rules come from the extracted YAML: descriptor `precedence` (a higher value sits closer to the topic), and per value the
+`valueForm`, `descriptorForm`, `order` and `position`. The summary value is rendered as the descriptor named in that
+topic's summary type (`AbsentPresent: { hasClinicalAbsence presence }` in the synthetic model). A pre-coordinated topic
+whose display already starts with the location ("thumb pain") stays in that short form until a laterality or a
+sub-location needs the prepositional form ("Pain in right thumb"). Missing lexicon entries fall back (an adverb becomes
+the display plus `-ly`) and `renderReport` lists them.
+
+The checked example is the public
+[thumb-pain walkthrough](https://pen-pad-revival.github.io/docs/clinergy-thumb-pain-demo/). `tests/fixtures/thumb-pain/`
+is synthetic rules and findings we wrote so that walkthrough's summary lines come back out. It is not a Clinergy
+extract: no model files, and the only Clinergy strings in it are concept keys. Which of those lines is public UI text,
+and which keys we invented, is noted at the top of the fixture. Real extracts stay out of the repo.
+
 ## Tests
 
 ```sh
 deno task test                                       # synthetic fixtures only
 CLINERGY_ZIP=/path/to/ClinergyDemo.zip deno task test  # also the full run on the real demo (needs Wine)
 ```
+
+Sentences against a real extract (the expected lines stay in a file you supply, not in the repo):
+
+```sh
+# out/ already produced by `deno task extract`:
+CLINERGY_OUT=/path/to/out \
+CLINERGY_SENTENCE_EXPECTATIONS=/path/to/expectations.yaml \
+  deno test -A tests/sentence_test.ts
+
+# or extract from the zip first (needs Wine), then render:
+CLINERGY_ZIP=/path/to/ClinergyDemo.zip \
+CLINERGY_SENTENCE_EXPECTATIONS=/path/to/expectations.yaml \
+  deno test -A tests/sentence_test.ts
+```
+
+`CLINERGY_OUT` wins when both it and `CLINERGY_ZIP` are set. The expectations file is a list (or `{ cases: [...] }`):
+
+```yaml
+- expected: "the sentence the engine showed"
+  finding:
+    topic: ThumbPainSymptom
+    location: Thumb
+    laterality: right
+    qualifiers: []
+```
+
+Use the concept keys from that extract. `lang` other than `en` is rejected until the multilingual work is in.
 
 ## Credits and licence
 
