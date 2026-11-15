@@ -471,19 +471,22 @@ function agreementFor(name: string, lang: Language): Agreement {
 }
 
 // --- token vocabulary ------------------------------------------------------
-// The extractor stores the engine's tokens as strings. The synthetic model in
-// tests/fixtures/dumps/lang.txt uses valueAdjective, valueAdverb, NoDescriptor,
-// descNoun, descFirst, valueFirst, beforeTopic, afterTopic. Issue #2 also
-// names descAdj. Unknown tokens fall back rather than throw.
+// The extractor stores the engine's tokens as strings, compared case-insensitively.
+// The 1998 engine abbreviates them: valueAdj, valueNoun, descAdj, descNoun,
+// NoDescriptor, valFirst. valueAdj is the adverb (lexicon.valueAdverbs, else +ly)
+// followed by the descriptor adjective, not an adjective of the value.
+// The long names (valueAdverb, valueAdjective, valueNoun, valueFirst) are accepted too.
+// Unknown tokens fall back rather than throw.
 
 function valueKind(form: string): "adjective" | "adverb" | "noun" | "raw" {
   switch (norm(form)) {
-    case "valueadjective":
-    case "adjective":
-      return "adjective";
+    case "valueadj":
     case "valueadverb":
     case "adverb":
       return "adverb";
+    case "valueadjective":
+    case "adjective":
+      return "adjective";
     case "valuenoun":
     case "noun":
       return "noun";
@@ -517,6 +520,7 @@ function descriptorKind(form: string): "none" | "noun" | "adj" | "negative" {
 function valueFirst(order: string): boolean {
   const s = norm(order);
   if (s === "descfirst" || s === "descriptorfirst") return false;
+  // valueFirst and the engine's abbreviation valFirst. Anything else stays value-first.
   return true;
 }
 
