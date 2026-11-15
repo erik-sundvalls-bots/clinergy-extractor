@@ -216,6 +216,82 @@ Deno.test("word forms: adverb + adjective, adjective + noun, descriptor-first, n
   );
 });
 
+Deno.test("engine valueAdj is the adverb, then the descriptor adjective", () => {
+  // Real sentence-rules.yaml uses these abbreviations. Lexicon has only
+  // valueAdverbs and descriptors. valueAdj means the adverb, not the display.
+  const rules = {
+    descriptors: {
+      Severity: {
+        precedence: 1,
+        rules: [{
+          value: "moderate",
+          valueForm: "valueAdj",
+          descriptorForm: "descAdj",
+          order: "valFirst",
+          position: "beforeTopic",
+        }],
+      },
+    },
+    lexicon: {
+      descriptors: { Severity: { noun: null, adjective: "severe", negative: null } },
+      valueAdverbs: { moderate: "moderately" },
+    },
+  };
+  const concepts = {
+    Pain: { display: "pain" },
+    Thumb: { display: "thumb" },
+    moderate: { display: "moderate" },
+  };
+  const links = { Pain: { locativeLinks: ["in Thumb"] } };
+  const qualifiers = [{ descriptor: "Severity", value: "moderate" }];
+  assertEquals(
+    render(
+      finding({ topic: "Pain", location: "Thumb", laterality: "right", qualifiers }),
+      knowledge({
+        ...rules,
+        concepts,
+        links,
+      }),
+    ),
+    "Moderately severe pain in right thumb",
+  );
+  // The same tokens in another case still select the adverb.
+  assertEquals(
+    render(
+      finding({ topic: "Pain", location: "Thumb", laterality: "right", qualifiers }),
+      knowledge({
+        descriptors: {
+          Severity: {
+            precedence: 1,
+            rules: [{
+              value: "moderate",
+              valueForm: "VALUEADJ",
+              descriptorForm: "DESCADJ",
+              order: "VALFIRST",
+              position: "BEFORETOPIC",
+            }],
+          },
+        },
+        lexicon: rules.lexicon,
+        concepts,
+        links,
+      }),
+    ),
+    "Moderately severe pain in right thumb",
+  );
+  // No adverb entry: valueAdj still falls back to the display plus -ly.
+  const fallback = renderReport(
+    finding({ topic: "Pain", qualifiers }),
+    knowledge({
+      descriptors: rules.descriptors,
+      lexicon: { descriptors: rules.lexicon.descriptors, valueAdverbs: {} },
+      concepts,
+    }),
+  );
+  assertEquals(fallback.sentence, "Moderately severe pain");
+  assert(fallback.missing.includes("lexicon:valueAdverbs.moderate"));
+});
+
 Deno.test("missing lexicon adverb falls back to the display plus -ly and is reported", () => {
   const k = knowledge({
     descriptors: {
