@@ -54,6 +54,46 @@ Deno.test("Swedish pack renders the thumb-pain walkthrough", async () => {
   }
 });
 
+Deno.test("valueAdj is the Swedish adverb, then the descriptor adjective", async () => {
+  const sv = languageFromPack(await loadLanguagePack("sv"));
+  const k = sentenceKnowledgeFromParsed(
+    {
+      descriptors: {
+        Severity: {
+          precedence: 1,
+          rules: [{
+            value: "moderate",
+            valueForm: "valueAdj",
+            descriptorForm: "descAdj",
+            order: "valFirst",
+            position: "beforeTopic",
+          }],
+        },
+      },
+      lexicon: { descriptors: {}, valueAdverbs: {} },
+    },
+    {
+      PainSymptom: { display: "pain" },
+      Thumb: { display: "thumb" },
+      moderate: { display: "moderate" },
+    },
+    { PainSymptom: { locativeLinks: ["in Thumb"] } },
+  );
+  assertEquals(
+    render(
+      finding({
+        topic: "PainSymptom",
+        location: "Thumb",
+        laterality: "right",
+        qualifiers: [{ descriptor: "Severity", value: "moderate" }],
+      }),
+      k,
+      sv,
+    ),
+    "Måttligt svår smärta i höger tumme",
+  );
+});
+
 Deno.test("a missing Swedish entry is reported and the concept key is used", async () => {
   const k = await loadSentenceKnowledge(fixtureOut);
   const pack = await loadLanguagePack("sv");
