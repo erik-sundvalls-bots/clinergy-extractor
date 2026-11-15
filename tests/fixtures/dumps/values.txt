@@ -1,0 +1,2 @@
+strong valuePrecedence 2 .
+slight valuePrecedence 1 .

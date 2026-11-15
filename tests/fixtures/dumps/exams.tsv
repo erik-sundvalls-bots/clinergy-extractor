@@ -1,0 +1,8 @@
+#examnames 1 1 1
+g0	Look	lateral=0	super=	level=1	base=Observation|	subexams[1]=ArmLook
+g1	ArmLook	lateral=0	super=Look	level=2	base=ArmSign|
+g2	ElbowLook	lateral=1	super=ArmLook	level=3	base=ArmSign|Elbow	signs0[1]=TendernessSign	subexams[1]=ElbowBendLook	symptomLinks[1]=ElbowAcheSymptom
+g3	ElbowBendLook	lateral=1	super=ElbowLook	level=4	base=ArmSign|Elbow
+#list summaryTypes[2]=AbsentPresent: { hasClinicalAbsence absence } { hasClinicalAbsence presence }|DoneNotDone: { hasStatus done } { hasStatus notdone }
+#list tsSystems[1]=ArmSystem
+#version test_1

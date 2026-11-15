@@ -1,0 +1,9 @@
+0	TopThing	cat=	sum=No Summary	rel=0	topic=top thing	showSubLoc=0	leftHanded=0
+1	AcheSymptom	cat=Incomplete symptom	sum=AbsentPresent	rel=0	topic=ache	showSubLoc=0	leftHanded=0	supers[1]=TopThing
+2	Elbow	cat=	sum=No Summary	rel=0	topic=elbow	showSubLoc=0	leftHanded=0	supers[1]=TopThing
+3	ElbowAcheSymptom	cat=Complete symptom	sum=AbsentPresent	rel=0	topic=elbow ache	exams[1]=ElbowLook	locativeLinks[1]=in Elbow	formLinkTopics[3]=SwellingSymptom of Elbow|ElbowStrain|BloodCount	visFeatureAtts[2]=Severity|Onset	showSubLoc=1	leftHanded=0	supers[1]=AcheSymptom
+4	SwellingSymptom	cat=Incomplete symptom	sum=AbsentPresent	rel=0	topic=swelling	showSubLoc=0	leftHanded=0	supers[1]=TopThing
+5	ElbowSwellingSymptom	cat=Complete symptom	sum=AbsentPresent	rel=0	topic=elbow swelling	locativeLinks[1]=of Elbow	showSubLoc=0	leftHanded=0	supers[1]=SwellingSymptom
+6	ElbowStrain	cat=Complete disease	sum=PresentPossibleExcluded	rel=0	topic=elbow strain	showSubLoc=0	leftHanded=0	supers[1]=TopThing
+7	BloodCount	cat=Complete investigation	sum=DoneNotDone	rel=0	topic=blood count	showSubLoc=0	leftHanded=0	supers[1]=TopThing
+8	elevated	cat=	sum=No Summary	rel=0	topic=elevated	showSubLoc=0	leftHanded=0	supers[1]=TopThing
