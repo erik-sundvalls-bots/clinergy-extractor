@@ -63,6 +63,13 @@ out/
   bodymap.yaml                      body-map click areas and selector buttons, per INI file
   topic-lists.yaml                  quick-pick lists
   search-space.yaml                 type-ahead search index
+  images.yaml                       every picture and icon found: source, resource id, size, what it is used for
+  images/bodymap/                   body-map pictures and close-ups (PNG), linked from bodymap.yaml
+  images/buttons/                   selector buttons (body-system filters)
+  images/bitmaps/                   other loose bitmaps (banner, tab buttons, installer pictures, VB form pictures)
+  images/resources/<module>/        RT_BITMAP resources of the EXEs, DLLs and OCXs (e.g. the toolbar strip)
+  images/icons/<module>/            icons and cursors: the original .ico/.cur plus one PNG per size
+  images/metafiles/<module>/        Windows metafile resources, kept as .wmf (not converted)
 ```
 
 Every YAML file starts with a comment header that says what it is, where it came from and who holds the rights. A form
@@ -70,8 +77,38 @@ file lists `firstLayer` (shown when the form opens) and `moreLayer` (behind the 
 curated values and an `inheritance` flag that compares it with the nearest supertype that has its own rows. The file
 then lists associated symptoms and signs, diagnoses and examinations. Its `concept:` key (`concepts.yaml#<Name>`) and
 exam names point into the lookup files. For the 1998 demo there are 2,121 forms, 7,442 visible items on 2,057 concepts,
-230 exams and 222 sentence-rule descriptors, in 2,131 files (about 20 MB). The largest files are `concept-links.yaml`
-(5.6 MB) and `concepts.yaml` (3.4 MB). Forms are 1 to 7 KB each.
+230 exams and 222 sentence-rule descriptors, in 2,132 YAML files (about 20 MB). The largest files are
+`concept-links.yaml` (5.6 MB) and `concepts.yaml` (3.4 MB). Forms are 1 to 7 KB each.
+
+### Images
+
+Every image in the zip is converted to PNG with our own decoders and encoder (`src/bmp.ts`, `src/png.ts`,
+`src/resources.ts`, `src/images.ts`; no external tools). That covers:
+
+- loose bitmaps, found by content, so the `.jk` and `.hf` files that are bitmaps are included;
+- `RT_BITMAP`, `RT_GROUP_ICON` and `RT_GROUP_CURSOR` resources in 32-bit PE and 16-bit NE executables, including the
+  installer's `_SETUP.LIB`;
+- icons stored in Visual Basic form data (`.frx` and compiled VB programs).
+
+Bitmap rows are flipped from the BMP bottom-up order, and icon AND masks become transparency. For the 1998 demo that is
+455 images in 625 files:
+
+| Kind                                         | Count |
+| -------------------------------------------- | ----- |
+| Loose bitmaps (Compdata, installer, VB form) | 126   |
+| Bitmap resources                             | 191   |
+| Icon groups                                  | 48    |
+| Cursor groups                                | 66    |
+| Metafiles (`.wmf`, in `GRAPH32.OCX`)         | 24    |
+
+The 24 metafiles are vector graphics and are kept as they are. Not covered: `_INST32I.EX_`, InstallShield's own
+compressed engine, whose format we don't read.
+
+In `bodymap.yaml`, each location's `inset`, each map's `mainGraphics` picture and each selector button now has its PNG
+path (`insetImage`, `image`, `bitmapImages`). Hotspots are `[top, bottom, left, right]` in pixels of the picture being
+clicked. A map's locations are on its main picture (e.g. `M_main.png`, 240×330). A location's sublocations are on its
+close-up (e.g. the hand close-up `B_fhnd.png`, 96×152, with the thumb and fingers). This was checked by drawing the
+hotspots on the extracted pictures. `insetRect` is `[left, top, width, height]` in the selector's graphic window.
 
 ## How it works, and why
 
