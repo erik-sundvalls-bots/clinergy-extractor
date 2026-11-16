@@ -1,0 +1,40 @@
+name: Clinergy to OpenGALEN mapping
+description: Contribute a reviewed.yaml snippet for names the extractor left on the worklist.
+title: "Mapping: "
+labels: ["mapping"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        One Clinergy name per entry, in the `map/reviewed.yaml` shape the extractor already reads.
+
+        `opengalen` is an OpenGALEN 8 name, or `null` when no single entity fits (no equivalent, a composition, or unsure). `confidence` is `high`, `medium` or `low`.
+
+        Check the snippet with:
+
+        ```sh
+        deno task map <extract-dir> <opengalen-source> <map-dir> --reviewed <this-file>
+        ```
+
+        The Clinergy name must be in that extraction. An OpenGALEN name must exist in the release. Unknown names are listed under `reviewedRejected` in `map/summary.yaml` and are not promoted.
+
+        The [OpenGALEN browser](https://erik-sundvalls-bots.github.io/opengalen-browser/?map=1) fills this form from a recorded decision. Do not paste a private Clinergy extract beyond the names and the rationale the mapping needs.
+  - type: textarea
+    id: snippet
+    attributes:
+      label: reviewed.yaml snippet
+      description: The snippet from the browser, or a note that the downloaded file is attached.
+      render: yaml
+      placeholder: |
+        mild:
+          opengalen: MildSeverity
+          confidence: high
+          rationale: "Value of the severity descriptor."
+          needsHumanReview: true
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Optional. Anything that should not be copied into map/reviewed.yaml.

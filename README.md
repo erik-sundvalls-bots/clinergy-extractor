@@ -153,7 +153,10 @@ from the mechanical work.
 2. **Review** the worklist, by hand or with an AI agent. The agent follows the skill in
    [`ai/map-to-opengalen/SKILL.md`](ai/map-to-opengalen/SKILL.md) and uses the OpenGALEN MCP server below. It writes its
    decisions to a reviewed file, e.g. `map/reviewed.yaml`, with a confidence, a rationale and `needsHumanReview` for
-   each entry. It must never invent names.
+   each entry. It must never invent names. The same snippet can be written in the
+   [OpenGALEN browser](https://erik-sundvalls-bots.github.io/opengalen-browser/?map=1) and submitted with the
+   [mapping issue template](https://github.com/erik-sundvalls-bots/clinergy-extractor/issues/new?template=mapping.yml&labels=mapping).
+   Paste the snippet into `map/reviewed.yaml`, or pass a downloaded file to `--reviewed`.
 3. **Merge and annotate**:
 
    ```sh

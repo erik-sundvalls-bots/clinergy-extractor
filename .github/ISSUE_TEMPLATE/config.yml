@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: OpenGALEN browser mapper
+    url: https://erik-sundvalls-bots.github.io/opengalen-browser/?map=1
+    about: Review a Clinergy name against the OpenGALEN hierarchy and copy a reviewed.yaml snippet
