@@ -5,6 +5,11 @@ tree of human-readable YAML files, one per data-entry form. It also includes too
 (a deterministic preprocessor, a read-only OpenGALEN MCP server and an AI-agent skill), and a script that installs and
 runs the demo itself under Wine.
 
+A live [experimental workbench](https://erik-sundvalls-bots.github.io/penpad-clinergy-workbench/) uses this repo's
+sentence generator and openEHR builder: fill a Clinergy-like thumb pain form in the browser and watch English and
+Swedish summary sentences, OpenGALEN bindings, and openEHR output update as you click. Nothing is installed and nothing
+is saved on a server.
+
 This repository contains **only our own code**. It contains no Clinergy program code, model files or extracted content.
 The demo's content is © 1997-8 Semantic Technologies Ltd / Victoria University of Manchester, All Rights Reserved. The
 YAML you generate stays a private study copy: don't publish or redistribute it without the rights holders' permission.
@@ -273,6 +278,9 @@ wrote so that walkthrough's summary lines come back out. It is not named `out/`,
 Which of those lines is public UI text, and which keys we invented, is noted at the top of the fixture. Real extracts
 stay out of the repo.
 
+The [experimental workbench](https://erik-sundvalls-bots.github.io/penpad-clinergy-workbench/) vendors this sentence
+generator and shows the English and Swedish summaries live as you fill that same form.
+
 ## openEHR
 
 `src/openehr.ts` turns the same findings into a canonical JSON COMPOSITION and the FLAT form of
@@ -290,6 +298,9 @@ ignored. Keys with no such mapping are printed as unmapped. The checked thumb-pa
 `DistalPhalanx`, which are identical names of classes in OpenGALEN 8; the other fixture keys are reported unmapped.
 `CLUSTER.exam.v2` is not in this template. Validating against an EHRbase is optional: set `EHRBASE_URL` and the ignored
 test in `tests/openehr_test.ts` runs. CI checks the composition against the web template locally.
+
+The same [experimental workbench](https://erik-sundvalls-bots.github.io/penpad-clinergy-workbench/) vendors this builder
+and updates the openEHR canonical JSON and FLAT as you click.
 
 ## Tests
 
