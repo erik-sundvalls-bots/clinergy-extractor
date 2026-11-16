@@ -1,0 +1,26 @@
+# Identical-name OpenGALEN mappings for keys in the synthetic thumb-pain fixture.
+# Checked against OpenGALEN 8 OWL Functional syntax (opengalen8-owl-sources.zip,
+# class Declaration lines) and the without-property-chains hierarchy dump.
+# method: exact means the Clinergy key and the OpenGALEN name are the same string
+# and that class is declared. No other names are mapped here.
+#
+# Thumb       class, equivalent to Pollux (the thumb) in the hierarchy dump.
+# DistalPhalanx  class, subclass of Phalanx in the hierarchy dump.
+#
+# Not mapped, even though a related OpenGALEN class exists, because the key is
+# not that name: ThumbPainSymptom, PainSymptom (Pain exists), ThumbSwellingSymptom
+# (SwellingSymptom exists), moderate/mild/severe (MildSeverity, ModerateSeverity,
+# SevereSeverity exist), gradual (GradualOnset and RapidOnset exist), left, right,
+# presence, week, day. Severity and Duration exist as OpenGALEN classes too, but
+# their dump parents are DiseaseFeature and TemporalFeature; they are not bound
+# here. A reviewed mapping would be a human decision.
+Thumb:
+  opengalen: Thumb
+  method: exact
+  needsHumanReview: false
+  kind: Class
+DistalPhalanx:
+  opengalen: DistalPhalanx
+  method: exact
+  needsHumanReview: false
+  kind: Class

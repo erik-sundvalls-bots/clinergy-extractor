@@ -273,6 +273,24 @@ wrote so that walkthrough's summary lines come back out. It is not named `out/`,
 Which of those lines is public UI text, and which keys we invented, is noted at the top of the fixture. Real extracts
 stay out of the repo.
 
+## openEHR
+
+`src/openehr.ts` turns the same findings into a canonical JSON COMPOSITION and the FLAT form of
+`templates/thumb-pain.webtemplate.json`. The composition is `COMPOSITION.encounter.v1` (category `433` event) holding
+`OBSERVATION.story.v1`, and each finding is a `CLUSTER.symptom_sign.v2` with a `CLUSTER.anatomical_location.v1` in the
+structured body-site slot. Paths and at-codes are in `mappings/openehr.yaml`, copied from the published CKM archetypes
+named there.
+
+```sh
+deno task openehr out/ finding.yaml --opengalen map/mappings.yaml
+```
+
+OpenGALEN names are taken only from a verified `mappings.yaml` (`exact`, `normalised` or `reviewed`). Worklist hints are
+ignored. Keys with no such mapping are printed as unmapped. The checked thumb-pain case binds `Thumb` and
+`DistalPhalanx`, which are identical names of classes in OpenGALEN 8; the other fixture keys are reported unmapped.
+`CLUSTER.exam.v2` is not in this template. Validating against an EHRbase is optional: set `EHRBASE_URL` and the ignored
+test in `tests/openehr_test.ts` runs. CI checks the composition against the web template locally.
+
 ## Tests
 
 ```sh
