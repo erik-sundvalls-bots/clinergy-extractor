@@ -1,0 +1,116 @@
+# Synthetic sentence rules for the thumb-pain tests.
+# Authored for this repository. Not extracted from a Clinergy model.
+# The shape matches sentence-rules.yaml as clinergy-extract.ts writes it
+# (one file; keys descriptors, valuePrecedences, summaryTypes, lexicon).
+# Word forms were chosen so the grammar reproduces the summary lines read off
+# the public walkthrough:
+# https://pen-pad-revival.github.io/docs/clinergy-thumb-pain-demo/
+# "for" as Duration's noun is our choice: that is the word in those lines.
+descriptors:
+  Severity:
+    precedence: 30
+    rules:
+      - value: mild
+        valueForm: valueAdverb
+        descriptorForm: descAdj
+        order: valueFirst
+        position: beforeTopic
+        valuePrecedence: 1
+      - value: moderate
+        valueForm: valueAdverb
+        descriptorForm: descAdj
+        order: valueFirst
+        position: beforeTopic
+        valuePrecedence: 2
+      - value: severe
+        valueForm: valueAdverb
+        descriptorForm: descAdj
+        order: valueFirst
+        position: beforeTopic
+        valuePrecedence: 3
+  Onset:
+    precedence: 10
+    rules:
+      - value: gradual
+        valueForm: valueAdjective
+        descriptorForm: descNoun
+        order: valueFirst
+        position: beforeTopic
+        valuePrecedence: 1
+      - value: rapid
+        valueForm: valueAdjective
+        descriptorForm: descNoun
+        order: valueFirst
+        position: beforeTopic
+        valuePrecedence: 2
+      - value: sudden
+        valueForm: valueAdjective
+        descriptorForm: descNoun
+        order: valueFirst
+        position: beforeTopic
+        valuePrecedence: 3
+  Duration:
+    precedence: 40
+    rules:
+      - value: day
+        valueForm: valueNoun
+        descriptorForm: descNoun
+        order: descFirst
+        position: afterTopic
+        valuePrecedence: 1
+      - value: week
+        valueForm: valueNoun
+        descriptorForm: descNoun
+        order: descFirst
+        position: afterTopic
+        valuePrecedence: 2
+  hasClinicalAbsence:
+    precedence: 5
+    rules:
+      - value: presence
+        valueForm: valueAdjective
+        descriptorForm: NoDescriptor
+        order: valueFirst
+        position: afterTopic
+        valuePrecedence: 1
+      - value: absence
+        valueForm: valueAdjective
+        descriptorForm: NoDescriptor
+        order: valueFirst
+        position: afterTopic
+        valuePrecedence: 2
+valuePrecedences:
+  mild: 1
+  moderate: 2
+  severe: 3
+  gradual: 1
+  rapid: 2
+  sudden: 3
+  day: 1
+  week: 2
+  presence: 1
+  absence: 2
+summaryTypes:
+  - "AbsentPresent: { hasClinicalAbsence absence } { hasClinicalAbsence presence }"
+lexicon:
+  descriptors:
+    Severity:
+      noun: severity
+      adjective: severe
+      negative: null
+    Onset:
+      noun: onset
+      adjective: null
+      negative: null
+    Duration:
+      noun: for
+      adjective: null
+      negative: null
+    hasClinicalAbsence:
+      noun: presence
+      adjective: present
+      negative: absent
+  valueAdverbs:
+    mild: mildly
+    moderate: moderately
+    severe: severely

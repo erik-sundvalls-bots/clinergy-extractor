@@ -1,0 +1,37 @@
+# Synthetic form for ThumbPainSymptom.
+# The controls mirror the public thumb-pain form (laterality, duration,
+# character, severity, frequency, associated thumb swelling). Button labels
+# from that page were turned into keys by us; they are not a dump of the model.
+topic: ThumbPainSymptom
+display: thumb pain
+category: symptom
+summaryType: AbsentPresent
+location: Thumb
+supers:
+  - PainSymptom
+concept: concepts.yaml#ThumbPainSymptom
+firstLayer:
+  - feature: laterality
+    values: [left, right]
+  - feature: sublocation
+    values: [ThumbNail, ProximalPhalanx, DistalPhalanx, IPJoint, MCPJoint, ThenarEminence]
+  - feature: Duration
+    values: [day, week]
+  - feature: Character
+    values: [aching, piercing, dull, throbbing, pressing, burning]
+  - feature: Severity
+    values: [mild, moderate, severe]
+  - feature: Frequency
+    values: [infrequent, occasional, frequent]
+moreLayer: []
+associatedSymptomsAndSigns:
+  - item: SwellingSymptom of Thumb
+    concept: SwellingSymptom
+    preposition: of
+    location: Thumb
+    preCoordinated: ThumbSwellingSymptom
+    category: symptom
+    summaryType: AbsentPresent
+diagnoses: []
+otherLinks: []
+examinations: []

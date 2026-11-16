@@ -1,0 +1,27 @@
+# Synthetic form for the associated "Thumb swelling" finding.
+# Sublocation buttons are the ones read off the public "More on Thumb swelling"
+# pop-up. Keys are ours.
+topic: ThumbSwellingSymptom
+display: thumb swelling
+category: symptom
+summaryType: AbsentPresent
+location: Thumb
+supers:
+  - SwellingSymptom
+concept: concepts.yaml#ThumbSwellingSymptom
+firstLayer:
+  - feature: laterality
+    values: [left, right]
+  - feature: sublocation
+    values: [ThumbNail, ProximalPhalanx, DistalPhalanx, IPJoint, MCPJoint, ThenarEminence]
+  - feature: Duration
+    values: [day, week]
+  - feature: Onset
+    values: [gradual, rapid, sudden]
+  - feature: Severity
+    values: [mild, moderate, severe]
+moreLayer: []
+associatedSymptomsAndSigns: []
+diagnoses: []
+otherLinks: []
+examinations: []

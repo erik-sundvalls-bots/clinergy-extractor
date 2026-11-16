@@ -1,0 +1,8 @@
+# Synthetic locative links. The preposition is the first word, as probe writes
+# it ("in Elbow" in the repo's synthetic entities). Not extracted from Clinergy.
+ThumbPainSymptom:
+  locativeLinks:
+    - in Thumb
+ThumbSwellingSymptom:
+  locativeLinks:
+    - of Thumb
