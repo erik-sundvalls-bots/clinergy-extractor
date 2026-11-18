@@ -13,6 +13,8 @@
  *   --dumps DIR         skip Wine: parse probe dumps already in DIR (e.g. from running
  *                       probe.exe on Windows); the zip is still read for the INI files
  *   --verbose           show Wine / compiler output
+ *   --fhir              after writing YAML, also write FHIR Questionnaires under out/fhir/
+ *                       (same as `deno task fhir out/`; default extract stays YAML only)
  *
  * Pipeline: ZIP -> InstallShield 3 payload (TypeScript, src/installshield3.ts)
  *   -> Wine runs probe.exe, which asks the original TermEng.dll to dump its
@@ -29,12 +31,12 @@ import { descriptorWords, valueAdverbs } from "./src/lexicon.ts";
 import { bodyMapUsage, collectImages, otherBitmapMentions } from "./src/images.ts";
 
 const USAGE = "usage: deno run -A clinergy-extract.ts <ClinergyDemo.zip> <output-dir> [--wine-prefix DIR] " +
-  "[--wine-arch win32|win64] [--probe-exe FILE] [--dumps DIR] [--verbose]";
+  "[--wine-arch win32|win64] [--probe-exe FILE] [--dumps DIR] [--verbose] [--fhir]";
 
 export async function main(argv: string[]): Promise<number> {
   const a = parseArgs(argv, {
     string: ["wine-prefix", "wine-arch", "probe-exe", "dumps"],
-    boolean: ["verbose", "help"],
+    boolean: ["verbose", "help", "fhir"],
     alias: { h: "help" },
   });
   if (a.help || a._.length !== 2) {
@@ -96,6 +98,18 @@ export async function main(argv: string[]): Promise<number> {
     `Wrote ${n} files to ${outDir}: ${s.completeTopics} forms, ${s.entitiesNamed} concepts, ${s.exams} exams, ` +
       `${s.languageDescriptors} sentence-rule descriptors, ${images.entries.length} images.`,
   );
+  if (a.fhir) {
+    const { writeFhirTree } = await import("./src/fhir.ts");
+    const fhir = await writeFhirTree({ outDir });
+    console.error(
+      `Wrote ${fhir.questionnaires} Questionnaire(s) to ${fhir.destDir}` +
+        (fhir.failures.length ? ` (${fhir.failures.length} failed)` : "") + ".",
+    );
+    if (fhir.failures.length) {
+      for (const row of fhir.failures) console.error(`  ${row.file}: ${row.error}`);
+      return 1;
+    }
+  }
   return 0;
 }
 

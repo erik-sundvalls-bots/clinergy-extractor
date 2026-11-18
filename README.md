@@ -50,6 +50,7 @@ takes about 15 seconds. Options:
 | `--probe-exe FILE`  | use a prebuilt `probe.exe` instead of compiling `probe/probe.c`                                             |
 | `--dumps DIR`       | skip Wine and parse dumps that `probe.exe` already wrote, e.g. on Windows: `probe.exe <dir>\model <outdir>` |
 | `--verbose`         | show Wine and compiler output                                                                               |
+| `--fhir`            | also write FHIR Questionnaires under `out/fhir/` (opt-in; see below). Default extract stays YAML only.      |
 
 ## Output
 
@@ -336,6 +337,39 @@ only the ids were checked, and tests still assert local syntax and the reviewed 
 
 The workbench already shows verified pre-coordinated SNOMED codes in its bindings table. Showing these post-coordinated
 expressions there is a follow-up; this repo does not change the workbench.
+
+## FHIR Questionnaire and Symptoms IG
+
+`src/fhir.ts` reads the per-form YAML already written by an extract and builds a draft FHIR R4 SDC `Questionnaire` for
+each form, plus (when you pass findings) a `QuestionnaireResponse` and
+[Symptom Logical Model](https://build.fhir.org/ig/HL7/fhir-symptoms-ig/en/StructureDefinition-SymptomLogicalModel.html)
+instances. This is opt-in. A default extract still writes YAML only.
+
+```sh
+deno task fhir out/                                      # Questionnaires for every form in out/forms/
+deno task fhir out/ --findings finding.yaml              # plus responses and symptoms.json
+deno task extract ClinergyDemo.zip out/ --fhir           # chain after a successful extract
+```
+
+Output goes to `out/fhir/` by default (`--dest DIR` to override): one `<category>/<Topic>.questionnaire.json` per form,
+optional numbered responses, `symptoms.json`, and `summary.json` with counts, uncoded items and mapping gaps. Generated
+files from a private Clinergy extract stay private and must not be committed.
+
+Codes are written only from a verified OpenGALEN `mappings.yaml` (`--opengalen`, default `out/../map/mappings.yaml` when
+that file exists) or a reviewed SNOMED map (`--snomed`, default `mappings/snomed.yaml` when present). Everything else
+stays as display text and is listed as uncoded. Don't guess codes.
+
+Descriptor mapping for the Symptom Logical Model: topic → `symptomCode`; present/absent → `presentFlag`; location,
+laterality and sub-location → `keyFeatures.location`; character / consistency / texture → `keyFeatures.quality`;
+severity → `keyFeatures.severity`; frequency → `keyFeatures.frequency.quality`; onset → `timing.speedOfOnset`; duration
+→ `timing.duration`; progress → `trend`; pattern → `clinicalCourse`; the English summary sentence →
+`symptomDescription`. Gaps are listed: there is no calendar onset, frequency is qualitative only, the model has no
+examination slot, and `reporter[x]` is left unset because a finding has no reporter and the model only allows a patient
+or a related person.
+
+The [experimental workbench](https://erik-sundvalls-bots.github.io/penpad-clinergy-workbench/) already does a runtime
+export for the public thumb-pain form. This command is the extractor-side, all-forms version of that work (issues #7 and
+#8).
 
 ## Tests
 
