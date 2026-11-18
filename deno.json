@@ -12,6 +12,7 @@
     "wine": "deno run -A clinergy-wine.ts",
     "sentence": "deno run -A src/sentence-cli.ts",
     "openehr": "deno run -A src/openehr-cli.ts",
+    "snomed": "deno run -A src/snomed-cli.ts",
     "test": "deno test -A",
     "check": "deno check *.ts src/*.ts mcp/*.ts tests/*.ts"
   },

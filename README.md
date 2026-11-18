@@ -302,6 +302,41 @@ test in `tests/openehr_test.ts` runs. CI checks the composition against the web 
 The same [experimental workbench](https://erik-sundvalls-bots.github.io/penpad-clinergy-workbench/) vendors this builder
 and updates the openEHR canonical JSON and FLAT as you click.
 
+## SNOMED CT expressions
+
+`src/snomed.ts` turns the same findings into SNOMED CT post-coordinated expressions in compositional grammar. Concept
+and attribute ids come only from the reviewed map `mappings/snomed.yaml`. Rows that are not `verified: true` are never
+written into an expression; unmapped parts are listed instead of being dropped.
+
+```sh
+deno task snomed finding.yaml
+```
+
+The checked case is the public thumb-pain walkthrough, using `tests/fixtures/thumb-pain/findings.yaml`. Laterality is
+applied to the body structure (`272741003 |Laterality|` is a body-structure attribute in the MRCM, not a
+clinical-finding attribute). Finding site, severity and clinical course are grouped as the SNOMED CT Editorial Guide
+requires. Clinical course is the attribute for onset; clinical finding has no duration attribute, so a numeric duration
+such as 2 weeks is reported unmapped and is not written into the expression.
+
+`ThumbPainSymptom` has a verified precoordinated concept, `300955002 |Pain in thumb|`. `ThumbSwellingSymptom` does not;
+the map records that and uses `65124004 |Swelling|` as the focus, with the site added from the finding.
+
+Optional validation against a terminology server runs only when an endpoint is configured (the same pattern as EHRbase
+for openEHR):
+
+```sh
+SNOMED_FHIR_URL=https://tx-nordics.fhir.org/fhir/r4 deno task snomed finding.yaml --validate
+# or
+SNOWSTORM_URL=https://your-snowstorm.example/snowstorm/snomed-ct deno task snomed finding.yaml --validate
+```
+
+`--validate` looks up each concept id (`CodeSystem/$validate-code` or Snowstorm `browser/{branch}/concepts/{id}`). Full
+expression/MRCM validation is used when the server accepts a compositional-grammar code; otherwise the CLI reports that
+only the ids were checked, and tests still assert local syntax and the reviewed MRCM grouping.
+
+The workbench already shows verified pre-coordinated SNOMED codes in its bindings table. Showing these post-coordinated
+expressions there is a follow-up; this repo does not change the workbench.
+
 ## Tests
 
 ```sh
@@ -362,3 +397,9 @@ Apache-2.0, see `LICENSE`. The DCL decoder follows the format described in zlib'
 which is under the zlib licence. The InstallShield 3 layout follows the documentation in Philippe Valembois'
 [idecomp](https://github.com/lephilousophe/idecomp). No code was copied from either. Part of the
 [PEN&PAD revival](https://pen-pad-revival.github.io/) project.
+
+SNOMED CT is used under a national member licence (Sweden, via the Swedish eHealth Agency). This repository is not a
+distribution of the SNOMED CT corpus. `mappings/snomed.yaml` and the tests hold a small set of identifiers and preferred
+terms for the public thumb-pain demo only, checked against SNOMED CT International edition 20260801 on the HL7 Nordics
+FHIR terminology server. Using SNOMED CT requires an affiliate or national member licence. SNOMED CT is a registered
+trademark of SNOMED International.
