@@ -7,8 +7,7 @@ import { zipStore } from "./zip-store.ts";
 export const PACK_SCHEMA = "penpad-image-pack/v1";
 export const DEFAULT_PACK_ZIP = "penpad-image-pack-clinergy-1998.zip";
 
-const NOTICE =
-  "© 1997–8 Semantic Technologies Ltd / Victoria University of Manchester. " +
+const NOTICE = "© 1997–8 Semantic Technologies Ltd / Victoria University of Manchester. " +
   "Private study copy produced locally from the user's own Clinergy demo. " +
   "Must not be committed, published, or redistributed.";
 
@@ -125,12 +124,13 @@ export async function writeImagePack(extractDir: string, opts: WriteImagePackOpt
   const needed = new Set<string>();
   for (const [name, locs] of Object.entries(data.maps)) {
     const mg = data.mainGraphics[name] ?? {};
-    const image = (typeof mg.imageId === "string" ? mg.imageId : null) ?? stemFromPath(mg.image) ?? stemFromPath(mg.picture);
+    const image = (typeof mg.imageId === "string" ? mg.imageId : null) ?? stemFromPath(mg.image) ??
+      stemFromPath(mg.picture);
     if (!image) continue;
     needed.add(image);
     const regions = (locs ?? []).map((loc) => {
-      const insetId = (typeof loc.insetImageId === "string" ? loc.insetImageId : null)
-        ?? stemFromPath(loc.insetImage) ?? stemFromPath(loc.inset);
+      const insetId = (typeof loc.insetImageId === "string" ? loc.insetImageId : null) ??
+        stemFromPath(loc.insetImage) ?? stemFromPath(loc.inset);
       if (insetId) needed.add(insetId);
       const insetRect = Array.isArray(loc.insetRect) ? loc.insetRect : null;
       return {
@@ -162,7 +162,8 @@ export async function writeImagePack(extractDir: string, opts: WriteImagePackOpt
       const v = settings[k];
       return Array.isArray(v) && typeof v[0] === "string" ? v[0] : undefined;
     };
-    const tsFlagType = (typeof sel.tsFlagType === "string" ? sel.tsFlagType : null) ?? labelOf("TSFlagType") ?? "symptom";
+    const tsFlagType = (typeof sel.tsFlagType === "string" ? sel.tsFlagType : null) ?? labelOf("TSFlagType") ??
+      "symptom";
     const options = Array.isArray(sel.options) ? sel.options as Array<Record<string, unknown>> : [];
     return {
       id: tsFlagType || `selector-${i + 1}`,
@@ -173,8 +174,10 @@ export async function writeImagePack(extractDir: string, opts: WriteImagePackOpt
         const buttons = Array.isArray(o.buttonIds) ? o.buttonIds as unknown[] : [];
         const bitmapImages = Array.isArray(o.bitmapImages) ? o.bitmapImages as unknown[] : [];
         const bitmaps = Array.isArray(o.bitmaps) ? o.bitmaps as unknown[] : [];
-        const up = (typeof buttons[0] === "string" ? buttons[0] : null) ?? stemFromPath(bitmapImages[0]) ?? stemFromPath(bitmaps[0]);
-        const down = (typeof buttons[1] === "string" ? buttons[1] : null) ?? stemFromPath(bitmapImages[1]) ?? stemFromPath(bitmaps[1]);
+        const up = (typeof buttons[0] === "string" ? buttons[0] : null) ?? stemFromPath(bitmapImages[0]) ??
+          stemFromPath(bitmaps[0]);
+        const down = (typeof buttons[1] === "string" ? buttons[1] : null) ?? stemFromPath(bitmapImages[1]) ??
+          stemFromPath(bitmaps[1]);
         if (up) needed.add(up);
         if (down) needed.add(down);
         return {
@@ -211,9 +214,11 @@ export async function writeImagePack(extractDir: string, opts: WriteImagePackOpt
     files[found.rel] = found.bytes;
   }
   if (missing.length) {
-    throw new Error(`Image pack: missing files for ${missing.length} id(s): ${missing.slice(0, 20).join(", ")}${
-      missing.length > 20 ? "…" : ""
-    }`);
+    throw new Error(
+      `Image pack: missing files for ${missing.length} id(s): ${missing.slice(0, 20).join(", ")}${
+        missing.length > 20 ? "…" : ""
+      }`,
+    );
   }
 
   const pack = {

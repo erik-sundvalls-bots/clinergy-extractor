@@ -7,7 +7,7 @@
  * Default zip: <extract-dir>/penpad-image-pack-clinergy-1998.zip
  * The zip is a local study copy and must not be committed or published.
  */
-import { writeImagePack, defaultZipPath } from "./image-pack.ts";
+import { defaultZipPath, writeImagePack } from "./image-pack.ts";
 
 const USAGE = "usage: deno task image-pack <extract-dir> [zip-path]";
 

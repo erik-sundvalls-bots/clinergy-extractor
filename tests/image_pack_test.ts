@@ -1,6 +1,6 @@
 import { assert, assertEquals, assertStringIncludes } from "@std/assert";
 import { join } from "@std/path";
-import { pngSize, writeImagePack, PACK_SCHEMA } from "../src/image-pack.ts";
+import { PACK_SCHEMA, pngSize, writeImagePack } from "../src/image-pack.ts";
 import { unzipStore, zipStore } from "../src/zip-store.ts";
 
 const TINY_PNG = Uint8Array.from(
