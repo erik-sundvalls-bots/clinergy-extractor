@@ -652,10 +652,6 @@ export function buildSymptom(
   return model;
 }
 
-function isRecord(value: unknown): value is Yaml {
-  return !!value && typeof value === "object" && !Array.isArray(value);
-}
-
 function uniqueUnmapped(rows: Unmapped[]): Unmapped[] {
   const seen = new Set<string>();
   const out: Unmapped[] = [];
