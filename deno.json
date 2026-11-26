@@ -15,7 +15,8 @@
     "snomed": "deno run -A src/snomed-cli.ts",
     "fhir": "deno run -A src/fhir-cli.ts",
     "test": "deno test -A",
-    "check": "deno check *.ts src/*.ts mcp/*.ts tests/*.ts"
+    "check": "deno check *.ts src/*.ts mcp/*.ts tests/*.ts",
+    "image-pack": "deno run -A src/image-pack-cli.ts"
   },
   "fmt": {
     "lineWidth": 120

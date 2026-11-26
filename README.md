@@ -51,6 +51,17 @@ takes about 15 seconds. Options:
 | `--dumps DIR`       | skip Wine and parse dumps that `probe.exe` already wrote, e.g. on Windows: `probe.exe <dir>\model <outdir>` |
 | `--verbose`         | show Wine and compiler output                                                                               |
 | `--fhir`            | also write FHIR Questionnaires under `out/fhir/` (opt-in; see below). Default extract stays YAML only.      |
+| `--image-pack`      | also write `<out>/penpad-image-pack-clinergy-1998.zip`, a swappable image pack (pictures + hotspot config) for the remake web app. Local study copy: do not commit or publish. The pack format is documented in the workbench repo at `docs/image-pack.md`. |
+| `--image-pack-out P`| write that pack zip to `P` (implies `--image-pack`).                                                        |
+
+From an existing extract tree, without re-running Wine:
+
+```sh
+deno task image-pack out/clinergy-extract-out
+# → out/clinergy-extract-out/penpad-image-pack-clinergy-1998.zip
+```
+
+Upload the zip in the remake UI, or unpack it into `remake/local-originals/` and open the remake with `?images=local`. The zip is gitignored (`*.zip`, `out/`).
 
 ## Output
 
